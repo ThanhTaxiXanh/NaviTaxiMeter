@@ -1,3 +1,21 @@
+# CHU KỲ BÀN GIAO THỨ NHẤT: HOÀN THÀNH 7/7 (15/11/2026, ICT)
+
+**AI_REPLY_COUNT: 7/7** sau khi AI kết thúc lượt trả lời này. Bàn giao đã hoàn tất đầy đủ 3.1–3.10 trong tài liệu độc lập:
+
+**docs/HANDOFF_2026-11-15_CYCLE_7-7.md**
+https://github.com/ThanhTaxiXanh/NaviTaxiMeter/blob/feature/navitaximeter-foundation/docs/HANDOFF_2026-11-15_CYCLE_7-7.md
+
+- Đã đọc lại quy tắc 7 lượt và bản bàn giao gốc; xác minh trực tiếp repo/PR/CI/issues.
+- Code HEAD **trước commit chỉ thêm tài liệu này**: c0af5ef6960a6358013b000fb9a947b6b8564a2a .
+- Flutter Android/SQLite/Kotlin CI 43717172307 **SUCCESS**; Zero Cost Gate 43717172335 và 43717167051 **SUCCESS**; debug artifact 14163112245. Đó là kết quả của code HEAD c0af5ef, không tự suy ra cho SHA commit hồ sơ.
+- PR #1 OPEN/DRAFT/NOT MERGED; main 539ff788b62be69135e5b3ad2c554dca005249a5; TTX tham chiếu SHA a40c246de6fd3799aaddedce3ed0d3b1d9dd524d, KHÔNG CHỈNH SỬA.
+- Công việc dở: issue #2 chưa kiểm tra Android thật và OS FGS, issue #3 chưa có production TripLocationService/single-writer SQLite/fence ACK; 12 Python SQLite proof dùng DB tạm, Kotlin protocol dùng fake writer, không mở tính cước khách.
+- Bước đầu tiên khi tiếp quản: xác minh docs-only commit HEAD mới và CI thực, sau đó tiếp tục lựa chọn writer/runtime theo issue #3 và xác minh máy Android theo issue #2.
+- Chat **mới** đặt AI_REPLY_COUNT=0. Nếu vẫn trong chat **này**, chu kỳ tiếp tục 8–14 và lại bàn giao ở 14/14, không reset sai.
+- Giữ Zero Paid API, không merge main, không sửa TTX, không Google Billing/paid APIs, không phát hành hoặc thu cước thương mại chưa được chủ dự án phê duyệt.
+
+---
+
 ## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 6/7 (15/11/2026)
 
 - **Đếm:** `AI_REPLY_COUNT=6` sau khi hoàn tất câu trả lời này.
