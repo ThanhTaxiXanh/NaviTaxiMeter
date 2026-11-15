@@ -1,3 +1,39 @@
+## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 5/7 (15/11/2026)
+
+- **Bộ đếm:** `AI_REPLY_COUNT = 5` khi hoàn tất lượt này;
+  còn 2 lượt trước bàn giao 7/7 bắt buộc.
+- **HEAD đã kiểm tra trước khi chỉnh sửa:** `d15cfda4fb3fd917aa36ac453d63e8b71f931151`;
+  Flutter Android run `43713186652` SUCCESS và Zero Cost Gate
+  `43713186643` SUCCESS. PR #1 vẫn Draft/open, main
+  `539ff788b62be69135e5b3ad2c554dca005249a5`.
+- **Triển khai lượt này:** `android_native/TripCheckpointProtocol.kt`
+  và `TripCheckpointProtocolTest.kt`, chỉ **contract JVM thử nghiệm**
+  không nối Android FGS, GPS thật, Flutter hay SQLite. `tool/bootstrap_android.py`
+  cài cả hai vào skeleton để chạy Gradle JUnit tests.
+- **Phát hiện và sửa từ code thật:** SQLite schema v3 có giao dịch
+  header+route nhưng chưa có metadata session/generation/checkpoint ACK
+  ở giao dịch native. `active_trip_route.sequence` bắt đầu từ 0.
+  Đã sửa `TripRepository.saveActiveIncremental()` để kiểm tra
+  **toàn bộ nội dung hàng lưu** khi replay trùng sequence và từ chối
+  khác tọa độ/speed thay vì `INSERT OR IGNORE`. Thêm SQLite FFI tests
+  về rollback và replay khớp. Không thay đổi schema hay mở thu cước.
+- **Tài liệu mới:** `docs/TRIP_LOCATION_SERVICE_CONTRACT.md`;
+  phân biệt rất rõ fake writer/JVM tests với writer SQLite có commit thật.
+  Khi JVM writer báo lỗi, protocol SUSPENDED, không tự resume.
+- **Chưa triển khai:** production `TripLocationService`, atomic SQLite
+  writer và ACK thật, migrate v3→v4, test Android thực 11–16/OEM,
+  trả cước hành khách, Google Billing, bản đồ/7 màn hình/VietQR.
+- **CI:** kiểm tra GitHub Actions mới đúng HEAD commit tiếp theo trước
+  khi tuyên bố thành công. Source/test mới không được coi là đã PASS
+  trước khi Gradle chạy thực tế.
+- **Tiếp theo:** nếu CI FAIL, sửa trên feature branch; nếu PASS, tạo
+  test plan cho writer adapter single-owner + migration và phối hợp
+  thử Android thật theo issue #2, issue #3.
+- **Ràng buộc:** không merge main, không sửa TTX tham chiếu; Zero Paid
+  API; không phát hành APK có tính tiền khi chưa phê duyệt.
+
+---
+
 ## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 4/7 (15/11/2026)
 
 - `AI_REPLY_COUNT=4` sau khi hoàn tất lượt này; bàn giao bắt buộc ở 7/7.

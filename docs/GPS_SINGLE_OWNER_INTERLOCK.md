@@ -147,3 +147,27 @@ cũng không phát sinh `onDestroy`, owner có thể ở trạng thái pending
 cho tới khi process được khởi động lại. Không dùng timeout để tự nhả
 lease khi chưa có bằng chứng Android đã dừng. Đây vẫn là giới hạn cần
 kiểm chứng trên Android thật (issue #2), không phải chứng nhận FGS.
+
+## Bản nháp hợp đồng TripLocationService (lượt 5/7)
+
+Đã bổ sung tài liệu độc lập `docs/TRIP_LOCATION_SERVICE_CONTRACT.md` cùng
+mô hình pure Kotlin `TripCheckpointProtocol`. Mô hình kiểm thử có
+start/sessionId+generation, service heartbeat ACK, GPS acquisition, ACTIVE,
+checkpoint theo sequence GNSS monotonic, lỗi -> SUSPENDED. Nó kiểm tra
+identity và chỉ chấp nhận receipt được writer trả về, nhưng **không có
+writer SQLite thật, không kiểm tra Android FGS thật và không có bản đồ/
+tọa độ/thu cước**. Do đó không được diễn giải các JVM unit test thành
+đã bảo đảm giao dịch `active_trip` + `active_trip_route` bền vững.
+Giao dịch native và schema migration vẫn là việc phải làm theo issue #3.
+
+
+## Kiểm tra replay route SQLite v3 (lượt 5/7)
+
+Trong Dart `TripRepository.saveActiveIncremental()`, replay route đã có
+`sequence` nay phải khớp **toàn bộ hàng SQLite đã commit** trước khi
+cho phép chèn điểm mới. Thay `INSERT OR IGNORE` mù bằng so khớp và
+`ConflictAlgorithm.abort` đối với hàng mới. Nếu cùng sequence khác
+latitude/speed/recordedAt/segment, transaction rollback và không sửa
+checkpoint. Có kiểm thử Flutter SQLite FFI cho xung đột. Không có
+sessionId/generation persisted trong v3; native writer và schema migration
+vẫn là hạng mục chưa triển khai (issue #3).

@@ -181,6 +181,66 @@ void main() {
     await repo.dispose();
   });
 
+  test('same sequence with changed GPS data is rejected atomically',
+      () async {
+    final db = await dbForTest();
+    final repo = TripRepository(database: db);
+    final route = points(3);
+    final snapshot = activeSnapshot(route);
+    await repo.beginActive(snapshot);
+    await repo.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: 0,
+      appendedPoints: route.take(2).toList());
+    final before = await repo.loadActive();
+    final changed = TripRoutePoint(
+      latitude: route[0].latitude + 0.0004,
+      longitude: route[0].longitude,
+      recordedAt: route[0].recordedAt,
+      accuracyMeters: route[0].accuracyMeters,
+      speedKmh: route[0].speedKmh,
+      segment: route[0].segment,
+    );
+    await expectLater(repo.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: 0,
+      appendedPoints: [changed, route[1], route[2]]), throwsStateError);
+    expect(await repo.loadActive(), before);
+    final persisted = await db.query('active_trip_route',
+      orderBy: 'sequence ASC');
+    expect(persisted.length, 2);
+    expect(persisted.first['latitude'], route[0].latitude);
+    // The exact original replay is still allowed and appends only new rows.
+    await repo.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: 0,
+      appendedPoints: route);
+    expect((await db.query('active_trip_route')).length, 3);
+    await repo.dispose();
+  });
+
+  test('replay of a saved GPS sequence with modified speed is rejected',
+      () async {
+    final db = await dbForTest();
+    final repo = TripRepository(database: db);
+    final route = points(2);
+    final snapshot = activeSnapshot(route);
+    await repo.beginActive(snapshot);
+    await repo.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: 0,
+      appendedPoints: route);
+    final altered = TripRoutePoint(
+      latitude: route[0].latitude,
+      longitude: route[0].longitude,
+      recordedAt: route[0].recordedAt,
+      accuracyMeters: route[0].accuracyMeters,
+      speedKmh: route[0].speedKmh + 3,
+      segment: route[0].segment,
+    );
+    await expectLater(repo.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: 0,
+      appendedPoints: [altered, route[1]]), throwsStateError);
+    expect((await db.query('active_trip_route')).length, 2);
+    await repo.dispose();
+  });
+
   test('reject missing/stale route samples and replacing unfinished trip',
       () async {
     final db = await dbForTest();

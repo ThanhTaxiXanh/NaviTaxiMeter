@@ -171,8 +171,9 @@ class TripRepository {
   }
 
   /// One atomic write contains the current meter and ONLY NEW GPS points.
-  /// Route indices are stable and INSERT OR IGNORE permits safe retries after
-  /// queued writes fail. Gaps/stale states abort rather than truncate history.
+  /// Exact replay of already-committed rows is idempotent. A duplicate
+  /// sequence with different content is a conflict, never silently ignored.
+  /// Gaps/stale states abort rather than truncate history.
   Future<void> saveActiveIncremental({
     required TripSessionSnapshot snapshot,
     required int routeStartIndex,
@@ -205,9 +206,21 @@ class TripRepository {
           final point = appendedPoints[i];
           // Validate route samples before committing them to crash recovery.
           TripRoutePoint.fromJson(point.toJson());
-          batch.insert('active_trip_route',
-            _routeRow(routeStartIndex + i, point),
-            conflictAlgorithm: ConflictAlgorithm.ignore);
+          final sequence = routeStartIndex + i;
+          final row = _routeRow(sequence, point);
+          if (sequence < currentCount) {
+            // A replay must match the *actual durable row*, not merely its
+            // sequence. INSERT OR IGNORE would hide different coordinates.
+            final persisted = await txn.query('active_trip_route',
+              where: 'sequence = ?', whereArgs: [sequence], limit: 1);
+            if (persisted.length != 1 ||
+                row.entries.any((e) => persisted.single[e.key] != e.value)) {
+              throw StateError('Conflicting GPS sample at saved sequence');
+            }
+          } else {
+            batch.insert('active_trip_route', row,
+              conflictAlgorithm: ConflictAlgorithm.abort);
+          }
         }
         // One native SQLite batch, still enclosed by the transaction.
         await batch.commit(noResult: true);

@@ -13,6 +13,11 @@ TARGET = ANDROID / "app/src/main/kotlin/vn/navitaximeter"
 UNIT_TEST_TARGET = ANDROID / "app/src/test/kotlin/vn/navitaximeter"
 GRADLE = ANDROID / "app/build.gradle.kts"
 UNIT_TEST_DEP = 'testImplementation("junit:junit:4.13.2")'
+NATIVE_SOURCES = (
+    "MainActivity.kt", "LocationSafetyService.kt",
+    "LocationOwnerRegistry.kt", "TripCheckpointProtocol.kt",
+)
+JVM_TEST_SOURCES = ("LocationOwnerRegistryTest.kt", "TripCheckpointProtocolTest.kt")
 PERMISSIONS = (
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.ACCESS_FINE_LOCATION",
@@ -67,14 +72,14 @@ def check():
         raise ValueError("Native service declaration is missing/unsafe")
     if "android.permission.ACCESS_BACKGROUND_LOCATION" in content:
         raise ValueError("Unexpected background location permission")
-    for name in ("MainActivity.kt", "LocationSafetyService.kt", "LocationOwnerRegistry.kt"):
+    for name in NATIVE_SOURCES:
         dst = TARGET / name
         if not dst.is_file() or dst.read_bytes() != (SOURCE / name).read_bytes():
             raise ValueError("Native Kotlin source not installed exactly: " + name)
-    test_file = "LocationOwnerRegistryTest.kt"
-    installed = UNIT_TEST_TARGET / test_file
-    if not installed.is_file() or installed.read_bytes() != (SOURCE / test_file).read_bytes():
-        raise ValueError("Native JVM safety test not installed exactly")
+    for name in JVM_TEST_SOURCES:
+        installed = UNIT_TEST_TARGET / name
+        if not installed.is_file() or installed.read_bytes() != (SOURCE / name).read_bytes():
+            raise ValueError("Native JVM safety test not installed exactly: " + name)
     if not GRADLE.is_file() or UNIT_TEST_DEP not in GRADLE.read_text(encoding="utf-8"):
         raise ValueError("Kotlin JVM test dependency missing")
     print("PASS: native service, Kotlin JVM test and Android permissions present")
@@ -87,11 +92,11 @@ def install():
         encoding="utf-8",
     )
     TARGET.mkdir(parents=True, exist_ok=True)
-    for name in ("MainActivity.kt", "LocationSafetyService.kt", "LocationOwnerRegistry.kt"):
+    for name in NATIVE_SOURCES:
         shutil.copyfile(SOURCE / name, TARGET / name)
     UNIT_TEST_TARGET.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(SOURCE / "LocationOwnerRegistryTest.kt",
-                    UNIT_TEST_TARGET / "LocationOwnerRegistryTest.kt")
+    for name in JVM_TEST_SOURCES:
+        shutil.copyfile(SOURCE / name, UNIT_TEST_TARGET / name)
     if not GRADLE.is_file():
         raise ValueError("Generated Android Kotlin DSL Gradle file missing")
     GRADLE.write_text(patch_gradle(GRADLE.read_text(encoding="utf-8")),

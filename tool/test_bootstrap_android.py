@@ -1,6 +1,9 @@
 import unittest
 from pathlib import Path
-from bootstrap_android import patch_manifest, patch_gradle, PERMISSIONS, UNIT_TEST_DEP
+from bootstrap_android import (
+    patch_manifest, patch_gradle, PERMISSIONS, UNIT_TEST_DEP,
+    NATIVE_SOURCES, JVM_TEST_SOURCES,
+)
 
 SAMPLE = """<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <application android:label="navitaximeter" android:name="generated">
@@ -42,6 +45,22 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('LocationOwnerRegistry.requestSafetyStop(expected)', activity)
         self.assertNotIn('LocationOwnerRegistry.cancelPendingSafety', activity)
         self.assertIn('owner != "preview" && owner != "lab"', activity)
+
+    def test_protocol_contract_is_unwired_and_has_runtime_tests(self):
+        root = Path(__file__).resolve().parents[1] / "android_native"
+        source = (root / "TripCheckpointProtocol.kt").read_text()
+        tests = (root / "TripCheckpointProtocolTest.kt").read_text()
+        self.assertIn("TripCheckpointProtocol.kt", NATIVE_SOURCES)
+        self.assertIn("TripCheckpointProtocolTest.kt", JVM_TEST_SOURCES)
+        self.assertIn("class TripCheckpointProtocol", source)
+        self.assertIn("fun interface AtomicTripCheckpointWriter", source)
+        self.assertIn("class TripCheckpointProtocolTest", tests)
+        self.assertIn("fun sqliteFailureEvenAfterPossibleCommitDoesNotAck", tests)
+        activity = (root / "MainActivity.kt").read_text()
+        native = (root / "LocationSafetyService.kt").read_text()
+        self.assertNotIn("TripCheckpointProtocol", activity)
+        self.assertNotIn("TripCheckpointProtocol", native)
+        self.assertNotIn("TaxiFare", source)
 
     def test_gradle_unit_test_patch_idempotent(self):
         source = 'plugins { id("com.android.application") }\n'
