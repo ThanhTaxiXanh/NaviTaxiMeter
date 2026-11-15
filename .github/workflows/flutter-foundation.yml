@@ -29,6 +29,8 @@ jobs:
         run: |
           python3 tool/bootstrap_android.py
           python3 tool/bootstrap_android.py --check
+      - name: Isolated SQLite post-commit ACK proof (no Android trip writer)
+        run: python3 -m unittest discover -s tool -p 'test_checkpoint_sqlite_contract.py' -v
       - name: Python safety tests
         run: python3 -m unittest discover -s tool -p 'test_*.py' -v
       - run: rm -f test/widget_test.dart

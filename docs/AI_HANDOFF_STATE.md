@@ -1,3 +1,42 @@
+## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 6/7 (15/11/2026)
+
+- **Đếm:** `AI_REPLY_COUNT=6` sau khi hoàn tất câu trả lời này.
+  **LƯỢT TIẾP THEO 7/7 BẮT BUỘC BÀN GIAO ĐẦY ĐỦ** các mục 3.1–3.10;
+  không mở nhiệm vụ mới ở lượt thứ 7. Sau khi chuyển sang cuộc trò chuyện
+  mới, đặt lại AI_REPLY_COUNT=0 theo quy tắc.
+- **Trước khi làm:** HEAD nhánh `feature/navitaximeter-foundation` là
+  `1ad8ae63b292da7dc0121ee5f78e89a248556000`, CI Foundation run
+  `43715705970` SUCCESS, Zero Cost Gate run `43715705900` SUCCESS,
+  PR #1 vẫn Draft/unmerged, main
+  `539ff788b62be69135e5b3ad2c554dca005249a5`.
+- **Việc mới:** `tool/checkpoint_sqlite_contract.py` minh họa
+  transactional checkpoint ACK trên SQLite **thật nhưng cách ly hoàn
+  toàn** với DB ứng dụng. Tạo DB `DISPOSABLE_TEST_ONLY.db` trong thư
+  mục tạm, sao chép dạng cột schema v3 và thêm hai bảng fence/ACK chỉ
+  dùng kiểm thử. `tool/test_checkpoint_sqlite_contract.py`: 12 test
+  cho commit/rollback, mất ACK sau commit, stale token, duplicate,
+  corruption, 8 writer cạnh tranh, recovery PAUSED.
+- **Đã chạy tại chỗ:** 12/12 PASS với CPython sqlite3. GitHub CI cần
+  xác minh ở đúng commit chứa code này; không suy rộng PASS local thành
+  Android native/physical GPS PASS.
+- **Tài liệu:** `docs/SQLITE_ACK_TRANSACTION_PROOF.md`, phụ lục trong
+  `docs/TRIP_LOCATION_SERVICE_CONTRACT.md`, issue #3.
+- **Phân biệt:** Kotlin `TripCheckpointProtocol` từ lượt 5 vẫn
+  **chưa có SQLite writer thật**; Python SQLite proof không kết nối
+  app hay Android, không thay đổi DB `navitaximeter_v1.db` hoặc schema v3.
+- **Còn thiếu:** lựa chọn một SQLite writer sản xuất duy nhất, runtime
+  nền Dart/Kotlin và engine parity, backup/migration v3→v4, native
+  Android SQLite ACK, đo FGS/GNSS trên thiết bị Android 11–16/OEM,
+  máy thử với số liệu, 7 UI/maps/offline/POI/VietQR, release signed.
+- **Không đổi:** không merge main, không sửa TTX gốc, không Google
+  Billing/paid APIs, không tính tiền khách, không bản đồ hoặc điểm
+  GPS giả làm dữ liệu thật.
+- **Điểm tiếp tục:** kiểm tra kết quả GitHub Actions chính xác của commit
+  thử nghiệm mới và cập nhật PR/issue. Nếu CI đỏ sửa trong lượt 6;
+  lượt 7 tổng hợp BÀN GIAO BẮT BUỘC đầy đủ.
+
+---
+
 ## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 5/7 (15/11/2026)
 
 - **Bộ đếm:** `AI_REPLY_COUNT = 5` khi hoàn tất lượt này;

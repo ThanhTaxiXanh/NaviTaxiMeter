@@ -115,3 +115,32 @@ Quy trình write/ACK dự kiến:
    quyết định triển khai `TripLocationService` duy nhất.
 4. Luôn giữ PR #1 Draft, main/TTX nguyên trạng, không Google Billing,
    không bật cước khách.
+
+## 6. Bằng chứng giao dịch SQLite thực trong DB thử riêng (lượt 6/7)
+
+**Tài liệu:** `docs/SQLITE_ACK_TRANSACTION_PROOF.md`.
+
+- `tool/checkpoint_sqlite_contract.py` chạy SQLite thực (Python stdlib) trên
+  **DB tạm DISPOSABLE_TEST_ONLY.db**, *không* mở `navitaximeter_v1.db`.
+  Hai bảng route/checkpoint mô phỏng **dạng cột** của schema v3; hai
+  bảng fence/ACK bổ sung chỉ tồn tại trong **DB thử**.
+- `tool/test_checkpoint_sqlite_contract.py` có **12 thử nghiệm**:
+  ACK sau commit bền vững, rollback khi lỗi route/header, ACK bị mất dù
+  transaction đã commit, duplicate đúng/sai nội dung, generation stale,
+  GPS stale/mock/gap, header/route corruption, recovery PAUSED và
+  8 kết nối SQLite cạnh tranh. Dùng dữ liệu kỹ thuật, không tạo
+  tuyến đường hay phí hành khách.
+- Đã chạy cục bộ `python3 -m unittest discover -s tool
+  -p 'test_checkpoint_sqlite_contract.py' -v`: **12/12 PASS** trên
+  môi trường cách ly. Phải kiểm tra lại kết quả GitHub Actions đúng HEAD
+  sau khi commit.
+- Các phép thử này minh họa khả năng thực hiện **một giao dịch SQLite**
+  ghi route/header/fence/ACK, nhưng **KHÔNG phải ứng dụng chạy SQLite
+  native** và **KHÔNG chứng minh** fsync/crash trên Android thật.
+  Chưa có migration v3→v4, chưa có single production writer.
+- `TripCheckpointProtocol.kt` hiện vẫn dùng injected writer giả trong
+  các Kotlin JVM unit tests, hoàn toàn chưa được nối với Python proof.
+
+**Thứ tự tiếp tục:** lựa chọn một writer duy nhất và test tương thích
+Dart engine → thiết kế migration backup/rollback → triển khai Android
+writer + ACK → instrumented/device tests issue #2 → phê duyệt riêng.
