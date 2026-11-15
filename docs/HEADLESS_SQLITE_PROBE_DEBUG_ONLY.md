@@ -40,3 +40,16 @@ Sau khi có emulator/máy Android thử, mới có thể chạy `(cd android && 
 5. Không merge main, sửa TTX, bật Google Billing/API phí hoặc thu cước khách.
 
 **Bằng chứng khi viết tài liệu:** đã commit nguồn thử nghiệm; các workflow đang được đối chiếu, chưa ghi nhận PASS từ Android physical device và chưa có production SQLite ACK.
+
+
+## 15/11/2026 — Bổ sung evidence gate và lifecycle fencing (chu kỳ mới 4–5/7)
+
+**Lần chạy emulator đầu tiên đã thực sự chạy instrumentation:** Foundation PR run [43724015757](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43724015757) có job `build-test` **SUCCESS**, job `emulator-probe` **FAIL** do lệnh xác minh tìm XML tại `android/app/build/outputs/androidTest-results/connected`, trong khi Gradle Flutter build đặt output dưới thư mục gốc `build/app`. Log test executor ghi `Starting 1 tests on test(AVD) - 14`, `Finished 1 tests`, `connectedDebugAndroidTest BUILD SUCCESSFUL`. **Không ghi emulator VERIFIED/PASS** ở mốc này vì gate XML bắt buộc thất bại và không có báo cáo đã xác minh. Không phải bằng chứng Android physical.
+
+Đã sửa workflow: verifier đọc `build/app/outputs/androidTest-results/connected`, artifact từ `build/app/reports/androidTests/connected`. `tool/verify_android_probe_results.py` vẫn giữ fail-closed: cần đúng XML testcase **đã thực thi**, không có lỗi/skip/nhân đôi. `tool/test_verify_android_probe_results.py` kiểm tra bảy tình huống này trong Python CI.
+
+Thêm `android_native/HeadlessProbeCallbackFence.kt` **chỉ được bootstrap vào `src/debug`** và `HeadlessProbeCallbackFenceTest.kt` trong `src/test` của debug build. Gate bảo đảm mỗi yêu cầu headless probe có nhiều nhất một callback. Khi service bị huỷ, những lệnh đang chờ được trả lỗi `SERVICE_DESTROYED`, callback Dart cũ không thể biến thành thành công; test JVM thử lặp/destroy/stale và nhiều pending callbacks. Native `HeadlessSqliteProbeService.kt` sử dụng gate này, không gắn vào GNSS/SQLite production.
+
+`HeadlessSqliteProbeInstrumentedTest.kt` hiện kiểm chứng hai giai đoạn trên Android emulator: bound service ghi một + tám lệnh vào **DB probe riêng**, service unbind và onDestroy, sau đó bind lại service và một headless FlutterEngine mới, xác nhận count persisted +1. Việc test được **biên dịch** trên CI không chứng minh quá trình destroy/rebind đã **thực thi**; phải đọc kết quả workflow đúng HEAD.
+
+**Không thay đổi bất biến:** không có TripLocationService GNSS production, không có `sessionId/generation` persistent hoặc ACK-after-COMMIT app DB, chưa có migration v4, không cước khách, không bản đồ/trip dữ liệu thật. Issue #2 vẫn OPEN: test emulator không thay kiểm thử Android 11–16 trên điện thoại thật/OEM.
