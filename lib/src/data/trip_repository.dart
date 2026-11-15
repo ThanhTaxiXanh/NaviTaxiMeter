@@ -188,8 +188,11 @@ class TripRepository {
       throw const FormatException('Invalid new-trip baseline snapshot');
     }
     final validated = TripRoutePoint.fromJson(initialPoint.toJson());
-    if (validated.segment != 0) {
-      throw const FormatException('Initial route must start at segment 0');
+    final started = DateTime.parse(startedAt);
+    final age = started.difference(validated.recordedAt);
+    if (validated.segment != 0 || age.isNegative ||
+        age > const Duration(seconds: 12)) {
+      throw const FormatException('Invalid initial GPS timestamp or segment');
     }
     final db = await _db;
     await db.transaction((txn) async {
@@ -198,9 +201,11 @@ class TripRepository {
       if (existing.isNotEmpty) {
         throw StateError('Không ghi đè chuyến chưa được lưu hoàn tất');
       }
-      // Purge only orphaned route rows when NO active trip exists. If either
-      // insert fails, this deletion and both new rows are rolled back.
-      await txn.delete('active_trip_route');
+      // Do NOT erase orphaned GPS evidence after a partial/corrupt session.
+      // Require manual recovery/inspection instead of silently losing route.
+      if (await _routeCount(txn) != 0) {
+        throw StateError('Orphaned GPS route requires recovery');
+      }
       await txn.insert('active_trip', {
         'id': 1,
         'payload': snapshot.encodeSqliteHeader(routeCount: 1),
