@@ -1,0 +1,19 @@
+name: Zero Cost Source Gate
+on:
+  push:
+    branches: [feature/navitaximeter-foundation]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tool -p 'test_*.py' -v
+      - run: python3 tool/check_zero_cost_policy.py

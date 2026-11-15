@@ -1,0 +1,36 @@
+name: Foundation Flutter Android
+on:
+  push:
+    branches: [feature/navitaximeter-foundation]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: navifoundation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android project (no map or billing)
+        run: flutter create . --platforms=android --org vn --project-name navitaximeter
+      - run: rm -f test/widget_test.dart
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - run: flutter test
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: navitaximeter-foundation-test-only
+          path: build/app/outputs/flutter-apk/app-debug.apk
