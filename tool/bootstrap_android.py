@@ -32,7 +32,8 @@ def patch_manifest(text: str) -> str:
         f'    <uses-permission android:name="{name}" />\n'
         for name in PERMISSIONS if name not in text
     )
-    text = text.replace("<application", missing + "    <application", 1)
+    if missing:
+        text = text.replace("<application", missing + "<application", 1)
     if "LocationSafetyService" not in text:
         text = text.replace("</application>", SERVICE_TAG + "    </application>", 1)
     if text.count("LocationSafetyService") != 1:
