@@ -52,6 +52,7 @@ class LocationSafetyService : Service(), LocationListener {
                 (SystemClock.elapsedRealtime() - heartbeatTime).coerceAtLeast(0L)
             val acknowledged = active &&
                 LocationOwnerRegistry.matches("native_safety", serviceLeaseId) &&
+                !LocationOwnerRegistry.safetyStopRequested(serviceLeaseId) &&
                 heartbeatAge in 0..7000
             return mapOf(
                 "active" to active,
@@ -90,6 +91,10 @@ class LocationSafetyService : Service(), LocationListener {
                 !active ||
                     !LocationOwnerRegistry.matches("native_safety", serviceLeaseId) -> {
                     state = "owner_lost"
+                    stopSelf()
+                }
+                LocationOwnerRegistry.safetyStopRequested(serviceLeaseId) -> {
+                    state = "stop_requested"
                     stopSelf()
                 }
                 !hasLocationPermission() -> {
@@ -157,13 +162,14 @@ class LocationSafetyService : Service(), LocationListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val requestedLease = intent?.getLongExtra(EXTRA_LEASE_ID, -1L) ?: -1L
         if (intent?.action == ACTION_STOP) {
-            if (active && serviceLeaseId == requestedLease &&
-                LocationOwnerRegistry.matches("native_safety", requestedLease)
-            ) {
-                state = "stop_requested"
-                stopSelf()
+            // A notification STOP may be delivered after process restart.
+            // It must not stop a newer session or free another owner's lease.
+            if (LocationOwnerRegistry.requestSafetyStop(requestedLease)) {
+                if (active && serviceLeaseId == requestedLease) {
+                    state = "stop_requested"
+                    stopSelf()
+                }
             } else if (!active) {
-                // A stale stop is never allowed to stop a newer active lease.
                 stopSelf(startId)
             }
             return START_NOT_STICKY
@@ -207,6 +213,14 @@ class LocationSafetyService : Service(), LocationListener {
                 )
             } else {
                 startForeground(NOTIFICATION_ID, notification())
+            }
+            // Stop can arrive between Activity dispatch and service startup.
+            // Always satisfy foreground-service promotion before stopping the
+            // queued service, but never subscribe to GPS after cancellation.
+            if (LocationOwnerRegistry.safetyStopRequested(requestedLease)) {
+                state = "stop_requested"
+                stopSelf(startId)
+                return START_NOT_STICKY
             }
             manager = lm
             registeredProvider = provider
@@ -280,7 +294,11 @@ class LocationSafetyService : Service(), LocationListener {
     override fun onDestroy() {
         heartbeatHandler.removeCallbacks(heartbeat)
         if (updatesRegistered) {
-            try { manager?.removeUpdates(this) } catch (_: SecurityException) { }
+            try {
+                manager?.removeUpdates(this)
+            } catch (_: RuntimeException) {
+                // Permission/OEM teardown failures must never leave a live lease.
+            }
             updatesRegistered = false
         }
         active = false

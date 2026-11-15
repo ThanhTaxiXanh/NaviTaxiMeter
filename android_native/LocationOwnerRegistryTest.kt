@@ -57,22 +57,44 @@ class LocationOwnerRegistryTest {
     }
 
     @Test
-    fun pendingSafetyStopRequiresMatchingLease() {
+    fun pendingStopNeverReleasesGpsBeforeOnDestroy() {
         val old = requireNotNull(LocationOwnerRegistry.claim("native_safety"))
-        assertFalse(LocationOwnerRegistry.cancelPendingSafety(old + 1))
-        assertTrue(LocationOwnerRegistry.matches("native_safety", old))
-        assertTrue(LocationOwnerRegistry.cancelPendingSafety(old))
+        assertTrue(old > 0L)
+        assertFalse(LocationOwnerRegistry.requestSafetyStop(old + 1))
+        assertFalse(LocationOwnerRegistry.safetyStopRequested(old))
+        assertTrue(LocationOwnerRegistry.requestSafetyStop(old))
+        assertTrue(LocationOwnerRegistry.safetyStopRequested(old))
+        assertEquals(true, LocationOwnerRegistry.snapshot()["stopRequested"])
+        // Start is still pending: a competing GPS client MUST be refused.
+        assertNull(LocationOwnerRegistry.claim("lab"))
+        assertNull(LocationOwnerRegistry.claim("preview"))
+        assertNull(LocationOwnerRegistry.claim("native_safety"))
+        // Service onDestroy is the only operation releasing this generation.
+        assertTrue(LocationOwnerRegistry.release("native_safety", old))
+        assertEquals(false, LocationOwnerRegistry.snapshot()["stopRequested"])
         val next = requireNotNull(LocationOwnerRegistry.claim("native_safety"))
         try {
-            assertFalse(LocationOwnerRegistry.cancelPendingSafety(old))
+            assertTrue(next > old)
+            assertFalse(LocationOwnerRegistry.requestSafetyStop(old))
+            assertFalse(LocationOwnerRegistry.safetyStopRequested(next))
             assertTrue(LocationOwnerRegistry.matches("native_safety", next))
-            val status = LocationOwnerRegistry.snapshot()
-            assertEquals("native_safety", status["owner"])
-            assertEquals(next, status["leaseId"])
         } finally {
             assertTrue(LocationOwnerRegistry.release("native_safety", next))
         }
         assertEquals(-1L, LocationOwnerRegistry.snapshot()["leaseId"])
+    }
+
+    @Test
+    fun repeatedPendingStopIsIdempotentWithoutReleasingLease() {
+        val lease = requireNotNull(LocationOwnerRegistry.claim("native_safety"))
+        try {
+            assertTrue(LocationOwnerRegistry.requestSafetyStop(lease))
+            assertTrue(LocationOwnerRegistry.requestSafetyStop(lease))
+            assertTrue(LocationOwnerRegistry.safetyStopRequested(lease))
+            assertNull(LocationOwnerRegistry.claim("preview"))
+        } finally {
+            assertTrue(LocationOwnerRegistry.release("native_safety", lease))
+        }
     }
 
     @Test

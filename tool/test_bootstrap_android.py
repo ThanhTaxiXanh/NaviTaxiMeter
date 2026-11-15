@@ -36,6 +36,12 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('serviceLeaseId == requestedLease', service)
         self.assertIn('!hasLocationPermission()', service)
         self.assertIn('!providerStillEnabled()', service)
+        self.assertIn('LocationOwnerRegistry.safetyStopRequested(requestedLease)', service)
+        self.assertIn('LocationOwnerRegistry.requestSafetyStop(requestedLease)', service)
+        self.assertIn('!LocationOwnerRegistry.safetyStopRequested(serviceLeaseId)', service)
+        self.assertIn('LocationOwnerRegistry.requestSafetyStop(expected)', activity)
+        self.assertNotIn('LocationOwnerRegistry.cancelPendingSafety', activity)
+        self.assertIn('owner != "preview" && owner != "lab"', activity)
 
     def test_gradle_unit_test_patch_idempotent(self):
         source = 'plugins { id("com.android.application") }\n'

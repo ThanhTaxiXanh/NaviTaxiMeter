@@ -1,3 +1,25 @@
+## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 4/7 (15/11/2026)
+
+- `AI_REPLY_COUNT=4` sau khi hoàn tất lượt này; bàn giao bắt buộc ở 7/7.
+- Trước khi sửa: HEAD `1bf47af554708843800accbe184b045b00636789`;
+  PR #1 Draft/open; main `539ff788b62be69135e5b3ad2c554dca005249a5`;
+  Flutter CI run 43711305353 và Zero Cost Gate 43711305398 SUCCESS.
+- Phát hiện xử lý: Start/Stop bất đồng bộ có thể trả reservation trước khi
+  service onStartCommand chạy. Bổ sung cờ stopRequested trong
+  `LocationOwnerRegistry.kt`; chỉ release ở Service onDestroy, START
+  pending được promote FGS rồi mới stop, không đăng ký GPS; ACK bị vô
+  hiệu khi stopRequested. Seed token bằng SecureRandom mỗi process.
+- Kiểm thử: thêm Kotlin JVM test cho stop-before-start, stop lặp,
+  generation cũ; Python source checks. **Chưa kiểm thử máy thật**.
+- Cần kiểm tra CI/HEAD mới sau commit trước khi xác nhận PASS.
+- Công việc kế tiếp: kiểm thử instrumented Android tại issue #2; hoàn thiện
+  thiết kế một TripLocationService + SQLite transactional ACK tại issue #3,
+  nhưng không bật thu cước, không phát hành APK thương mại.
+- Ràng buộc không đổi: chỉ branch feature; không merge main, không sửa
+  TTX; Google Billing/paid maps/API key chưa bật; tính cước khách bị khóa.
+
+---
+
 ## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 3/7 (15/11/2026)
 
 - **Đếm:** `AI_REPLY_COUNT = 3` sau khi hoàn tất lượt trả lời này;

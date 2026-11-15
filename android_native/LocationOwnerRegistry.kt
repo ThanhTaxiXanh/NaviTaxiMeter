@@ -1,12 +1,17 @@
 package vn.navitaximeter
 
+import java.security.SecureRandom
+
 /**
  * A process-local safety interlock for the three GPS experiments.
  * This is NOT a persistent/billable trip-service owner.
  */
 object LocationOwnerRegistry {
     private var owner = "none"
-    private var generation = 0L
+    // Do not reuse a small lease token after Android process death:
+    // stale notification PendingIntents can outlive an earlier process.
+    private var generation = SecureRandom().nextLong().ushr(2)
+    private var stopRequestedLeaseId = -1L
     private val allowed = setOf("preview", "lab", "native_safety")
 
     @Synchronized
@@ -26,6 +31,7 @@ object LocationOwnerRegistry {
     fun release(requestedOwner: String, leaseId: Long): Boolean {
         if (!matches(requestedOwner, leaseId)) return false
         owner = "none"
+        stopRequestedLeaseId = -1L
         return true
     }
 
@@ -36,16 +42,26 @@ object LocationOwnerRegistry {
     fun snapshot(): Map<String, Any> = mapOf(
         "owner" to owner,
         "occupied" to (owner != "none"),
-        "leaseId" to (if (owner == "none") -1L else generation)
+        "leaseId" to (if (owner == "none") -1L else generation),
+        "stopRequested" to (owner == "native_safety" &&
+            stopRequestedLeaseId == generation)
     )
 
     /**
-     * Cancel only the safety start with the token that was dispatched.
-     * A delayed stop from an older session must never clear a newer owner.
-     * Caller must independently verify no live native service is running.
+     * A stop during the asynchronous START reservation is a request, NOT
+     * permission to release GPS. Only service onDestroy confirms teardown.
+     * If Android never dispatches onStartCommand, retain the lease fail-closed
+     * until the process is restarted, rather than allowing overlapping FGS.
      */
     @Synchronized
-    fun cancelPendingSafety(expectedLeaseId: Long): Boolean {
-        return release("native_safety", expectedLeaseId)
+    fun requestSafetyStop(expectedLeaseId: Long): Boolean {
+        if (!matches("native_safety", expectedLeaseId)) return false
+        stopRequestedLeaseId = expectedLeaseId
+        return true
     }
+
+    @Synchronized
+    fun safetyStopRequested(expectedLeaseId: Long): Boolean =
+        matches("native_safety", expectedLeaseId) &&
+            stopRequestedLeaseId == expectedLeaseId
 }

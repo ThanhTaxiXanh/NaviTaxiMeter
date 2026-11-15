@@ -117,3 +117,33 @@ và heartbeat. Việc FGS thực sự dừng trên Android sau thao tác cancell
 hoạt động của `PendingIntent` qua process death/permission revoke, và Doze/OEM
 **vẫn cần thử thiết bị thật**. Không có thay đổi liên quan tính cước,
 VietQR, Google Billing, hay SQLite thương mại.
+
+
+## Gia cố Start/Stop bất đồng bộ (chu kỳ 4/7, 15/11/2026)
+
+Rủi ro tìm thấy ở HEAD `1bf47af5`: Activity có thể gọi `stopService`
+và trả `native_safety` lease khi `startForegroundService` vừa được
+dispatch nhưng Kotlin Service chưa chạy `onStartCommand`. Android có
+thể còn lệnh Start đang đợi, từ đó cho phép luồng Geolocator thứ hai.
+
+Sửa đổi ở HEAD tiếp theo:
+- `requestSafetyStop(leaseId)` chỉ ghi ý định dừng, **không** release
+  reservation. Mọi yêu cầu lấy owner khác đều bị từ chối cho tới khi
+  `onDestroy` của Service release đúng token.
+- Với Start chưa ACK, Activity không gọi `stopService` sớm;
+  `onStartCommand` gọi `startForeground` rồi kiểm tra cờ dừng. Nếu có
+  yêu cầu dừng, không đăng ký LocationManager, gọi `stopSelf(startId)`.
+- Với Service đã active, Activity gửi stop và ACK bị vô hiệu ngay khi
+  cờ dừng được đặt. Giao diện không được hiểu ACK cũ là dịch vụ còn
+  đủ điều kiện hoạt động.
+- Lease ID được gieo bằng `SecureRandom` theo từng process rồi tăng
+  dần, giảm khả năng lệnh dừng từ notification cũ trùng lease mới sau
+  process death. Đây là fencing token, **không phải khóa xác thực**.
+- Kotlin JVM test mới kiểm tra `stopRequested` giữ độc quyền,
+  idempotent STOP, stale STOP và release chỉ sau teardown.
+
+**Fail-closed có chủ ý:** nếu Android không bao giờ thực thi Start và
+cũng không phát sinh `onDestroy`, owner có thể ở trạng thái pending
+cho tới khi process được khởi động lại. Không dùng timeout để tự nhả
+lease khi chưa có bằng chứng Android đã dừng. Đây vẫn là giới hạn cần
+kiểm chứng trên Android thật (issue #2), không phải chứng nhận FGS.

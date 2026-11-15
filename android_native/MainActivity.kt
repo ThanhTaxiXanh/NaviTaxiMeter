@@ -54,7 +54,7 @@ class MainActivity : FlutterActivity() {
                         val owner = call.argument<String>("owner")
                         val lease = call.argument<Number>("leaseId")?.toLong()
                         result.success(
-                            if (owner == null || lease == null) false
+                            if ((owner != "preview" && owner != "lab") || lease == null) false
                             else LocationOwnerRegistry.release(owner, lease)
                         )
                     }
@@ -121,15 +121,21 @@ class MainActivity : FlutterActivity() {
                             result.success(false)
                             return@setMethodCallHandler
                         }
+                        if (!LocationOwnerRegistry.requestSafetyStop(expected)) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
                         try {
-                            stopService(Intent(this, LocationSafetyService::class.java))
-                            // Destroy releases a live service. Only a still-pending
-                            // request may be invalidated here, with its exact token.
-                            if (LocationSafetyService.snapshot()["active"] != true) {
-                                LocationOwnerRegistry.cancelPendingSafety(expected)
+                            // If startForegroundService has been dispatched but
+                            // onStartCommand has not run, do not release its lease
+                            // or race stopService against the queued start.
+                            // The pending start will promote, then stop itself.
+                            if (LocationSafetyService.snapshot()["active"] == true) {
+                                stopService(Intent(this, LocationSafetyService::class.java))
                             }
                             result.success(true)
                         } catch (e: Exception) {
+                            // Keep stopRequested set. New owners remain blocked.
                             result.error("FGS_STOP_FAILED", e.message, null)
                         }
                     }
