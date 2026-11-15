@@ -14,6 +14,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
@@ -30,6 +31,7 @@ class LocationSafetyService : Service(), LocationListener {
     companion object {
         const val ACTION_START = "vn.navitaximeter.action.SAFETY_START"
         const val ACTION_STOP = "vn.navitaximeter.action.SAFETY_STOP"
+        const val EXTRA_LEASE_ID = "locationOwnerLeaseId"
         private const val CHANNEL = "navi_gps_safety_v1"
         private const val NOTIFICATION_ID = 8104
 
@@ -37,16 +39,28 @@ class LocationSafetyService : Service(), LocationListener {
         @Volatile private var acceptedCount = 0L
         @Volatile private var latestAcceptedElapsedMs = 0L
         @Volatile private var state = "stopped"
+        @Volatile private var serviceLeaseId = -1L
+        @Volatile private var lastHeartbeatElapsedMs = 0L
 
         fun snapshot(): Map<String, Any> {
             val last = latestAcceptedElapsedMs
             val age = if (last == 0L) -1L else
                 (SystemClock.elapsedRealtime() - last).coerceAtLeast(0L)
+            val heartbeatTime = lastHeartbeatElapsedMs
+            val heartbeatAge = if (heartbeatTime == 0L) -1L else
+                (SystemClock.elapsedRealtime() - heartbeatTime).coerceAtLeast(0L)
+            val acknowledged = active &&
+                LocationOwnerRegistry.matches("native_safety", serviceLeaseId) &&
+                heartbeatAge in 0..7000
             return mapOf(
                 "active" to active,
+                "acknowledged" to acknowledged,
+                "owner" to LocationOwnerRegistry.currentOwner(),
+                "leaseId" to serviceLeaseId,
+                "heartbeatAgeMs" to heartbeatAge,
                 "acceptedCount" to acceptedCount,
                 "lastTrustedAgeMs" to age,
-                "fresh" to (active && age in 0..12000),
+                "fresh" to (acknowledged && age in 0..12000),
                 "state" to state,
                 "billingEnabled" to false,
                 "coordinatesExported" to false
@@ -56,6 +70,18 @@ class LocationSafetyService : Service(), LocationListener {
 
     private var manager: LocationManager? = null
     private var updatesRegistered = false
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    private val heartbeat = object : Runnable {
+        override fun run() {
+            if (active && LocationOwnerRegistry.matches("native_safety", serviceLeaseId)) {
+                lastHeartbeatElapsedMs = SystemClock.elapsedRealtime()
+                heartbeatHandler.postDelayed(this, 3000L)
+            } else {
+                state = "owner_lost"
+                stopSelf()
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -103,7 +129,17 @@ class LocationSafetyService : Service(), LocationListener {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (intent?.action != ACTION_START || !hasLocationPermission()) {
+        val requestedLease = intent?.getLongExtra(EXTRA_LEASE_ID, -1L) ?: -1L
+        if (intent?.action != ACTION_START ||
+            !LocationOwnerRegistry.matches("native_safety", requestedLease)
+        ) {
+            state = "owner_missing"
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        if (active && serviceLeaseId == requestedLease) return START_NOT_STICKY
+        serviceLeaseId = requestedLease
+        if (!hasLocationPermission()) {
             state = "permission_missing"
             stopSelf()
             return START_NOT_STICKY
@@ -139,6 +175,8 @@ class LocationSafetyService : Service(), LocationListener {
             @Suppress("DEPRECATION")
             lm.requestLocationUpdates(provider, 3000L, 0f, this, Looper.getMainLooper())
             updatesRegistered = true
+            lastHeartbeatElapsedMs = SystemClock.elapsedRealtime()
+            heartbeatHandler.postDelayed(heartbeat, 3000L)
         } catch (_: SecurityException) {
             state = "permission_revoked"
             stopSelf()
@@ -153,7 +191,8 @@ class LocationSafetyService : Service(), LocationListener {
     }
 
     override fun onLocationChanged(location: Location) {
-        if (!active || !hasLocationPermission()) {
+        if (!active || !LocationOwnerRegistry.matches("native_safety", serviceLeaseId) ||
+            !hasLocationPermission()) {
             if (!hasLocationPermission()) {
                 state = "permission_revoked"
                 stopSelf()
@@ -191,12 +230,16 @@ class LocationSafetyService : Service(), LocationListener {
     }
 
     override fun onDestroy() {
+        heartbeatHandler.removeCallbacks(heartbeat)
         if (updatesRegistered) {
             try { manager?.removeUpdates(this) } catch (_: SecurityException) { }
             updatesRegistered = false
         }
         active = false
         latestAcceptedElapsedMs = 0L
+        lastHeartbeatElapsedMs = 0L
+        LocationOwnerRegistry.release("native_safety", serviceLeaseId)
+        serviceLeaseId = -1L
         state = "stopped"
         super.onDestroy()
     }

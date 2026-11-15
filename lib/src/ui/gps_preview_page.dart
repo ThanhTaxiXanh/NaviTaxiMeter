@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../core/location_tracking_policy.dart';
+import '../core/location_owner_gate.dart';
 
 /// Preview-only validation. It never feeds a fare engine or stores coordinates.
 abstract final class PreviewGpsQuality {
@@ -34,8 +35,11 @@ class GpsPreviewPage extends StatefulWidget {
   State<GpsPreviewPage> createState() => _GpsPreviewPageState();
 }
 
-class _GpsPreviewPageState extends State<GpsPreviewPage> {
+class _GpsPreviewPageState extends State<GpsPreviewPage>
+    with WidgetsBindingObserver {
   final LocationTrackingPolicy _policy = LocationTrackingPolicy();
+  LocationOwnerLease? _lease;
+  bool _visible = true;
   StreamSubscription<Position>? _subscription;
   Timer? _watchdog;
   Position? _latest;
@@ -45,8 +49,20 @@ class _GpsPreviewPageState extends State<GpsPreviewPage> {
 
   bool get _tracking => _subscription != null;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _visible = state == AppLifecycleState.resumed;
+    if (!_visible) unawaited(_stop());
+  }
+
   Future<void> _start() async {
-    if (_tracking || _starting) return;
+    if (_tracking || _starting || !_visible) return;
     setState(() { _starting = true; _state = 'Đang kiểm tra quyền GPS...'; });
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
@@ -60,8 +76,13 @@ class _GpsPreviewPageState extends State<GpsPreviewPage> {
           permission == LocationPermission.deniedForever) {
         throw StateError('Chưa được cấp quyền vị trí chính xác');
       }
-      if (!mounted) return;
-      // The foreground location stream is started only from a visible screen.
+      if (!mounted || !_visible) return;
+      _lease = await LocationOwnerLease.acquire('preview');
+      if (!mounted || !_visible) {
+        await _stop();
+        return;
+      }
+      // Native lease precedes the Geolocator foreground stream.
       final now = DateTime.now();
       _policy.begin(now);
       final settings = AndroidSettings(
@@ -133,6 +154,11 @@ class _GpsPreviewPageState extends State<GpsPreviewPage> {
     _watchdog = null;
     _policy.clear();
     await existing?.cancel();
+    final lease = _lease;
+    if (lease != null) {
+      await lease.release();
+      _lease = null;
+    }
     if (mounted) {
       setState(() {
         _latest = null;
@@ -144,8 +170,8 @@ class _GpsPreviewPageState extends State<GpsPreviewPage> {
 
   @override
   void dispose() {
-    _watchdog?.cancel();
-    _subscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_stop());
     super.dispose();
   }
 

@@ -9,13 +9,19 @@ class SafetyServiceStatus {
   const SafetyServiceStatus({
     required this.active, required this.fresh,
     required this.acceptedCount, required this.lastTrustedAgeMs,
-    required this.state,
+    required this.state, required this.acknowledged,
+    required this.owner, required this.leaseId,
+    required this.heartbeatAgeMs,
   });
   final bool active;
   final bool fresh;
   final int acceptedCount;
   final int lastTrustedAgeMs;
   final String state;
+  final bool acknowledged;
+  final String owner;
+  final int leaseId;
+  final int heartbeatAgeMs;
 
   factory SafetyServiceStatus.parse(Map<dynamic, dynamic> fields) {
     if (fields['billingEnabled'] != false ||
@@ -27,14 +33,29 @@ class SafetyServiceStatus {
     final count = fields['acceptedCount'];
     final age = fields['lastTrustedAgeMs'];
     final state = fields['state'];
+    final ack = fields['acknowledged'];
+    final owner = fields['owner'];
+    final lease = fields['leaseId'];
+    final heartbeat = fields['heartbeatAgeMs'];
     if (active is! bool || fresh is! bool || count is! int || count < 0 ||
-        age is! int || age < -1 || state is! String) {
+        age is! int || age < -1 || state is! String ||
+        ack is! bool || owner is! String ||
+        !const {'none', 'preview', 'lab', 'native_safety'}.contains(owner) ||
+        lease is! int || heartbeat is! int || heartbeat < -1) {
       throw const FormatException('Dữ liệu trạng thái GPS không hợp lệ');
     }
+    if (ack && (!active || owner != 'native_safety' ||
+        lease <= 0 || heartbeat < 0 || heartbeat > 7000)) {
+      throw const FormatException('Android GPS ACK không hợp lệ');
+    }
+    final live = active && ack && owner == 'native_safety' &&
+        lease > 0 && heartbeat >= 0 && heartbeat <= 7000;
     return SafetyServiceStatus(
-      active: active,
-      fresh: active && fresh && age >= 0 && age <= 12000,
+      active: live,
+      fresh: live && fresh && age >= 0 && age <= 12000,
       acceptedCount: count, lastTrustedAgeMs: age, state: state,
+      acknowledged: live, owner: owner,
+      leaseId: lease, heartbeatAgeMs: heartbeat,
     );
   }
 }
@@ -95,6 +116,8 @@ class _SafetyServicePageState extends State<SafetyServicePage>
   Future<void> _start() async {
     if (_busy || !_visible) return;
     setState(() => _busy = true);
+    int? pendingLease;
+    var confirmed = false;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         throw StateError('Cần bật Vị trí của Android');
@@ -126,8 +149,30 @@ class _SafetyServicePageState extends State<SafetyServicePage>
         ),
       );
       if (confirm != true || !mounted || !_visible) return;
-      await _channel.invokeMethod<bool>('start');
-      await _refresh();
+      final dispatch = await _channel.invokeMapMethod<String, dynamic>('start');
+      if (dispatch?['requestAccepted'] != true ||
+          dispatch?['leaseId'] is! int) {
+        throw const FormatException('Android chưa chấp nhận lệnh khởi động');
+      }
+      pendingLease = dispatch!['leaseId'] as int;
+      // Dispatch does not mean the service is alive. Match token + heartbeat.
+      for (var attempt = 0; attempt < 10 && mounted && _visible; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>('status');
+        if (raw == null) continue;
+        final status = SafetyServiceStatus.parse(raw);
+        if (status.acknowledged && status.leaseId == pendingLease) {
+          confirmed = true;
+          if (mounted) setState(() {
+            _status = status;
+            _message = 'Đã xác nhận GPS Android; chỉ dùng để chẩn đoán.';
+          });
+          break;
+        }
+      }
+      if (!confirmed) {
+        throw StateError('Không nhận được ACK/heartbeat; yêu cầu dừng');
+      }
     } on PlatformException catch (error) {
       if (mounted) setState(() {
         _message = error.code == 'NOTIFICATION_PERMISSION'
@@ -138,6 +183,13 @@ class _SafetyServicePageState extends State<SafetyServicePage>
       if (mounted) setState(
           () => _message = 'Không thể bật dịch vụ: ' + error.toString());
     } finally {
+      if (!confirmed && pendingLease != null) {
+        try {
+          await _channel.invokeMethod<bool>('stop', {'leaseId': pendingLease});
+        } catch (_) {
+          // A failed stop must never give a different owner permission.
+        }
+      }
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -185,6 +237,9 @@ class _SafetyServicePageState extends State<SafetyServicePage>
         Text('GPS mới: ' + (status?.fresh == true ? 'Có' : 'Không')),
         Text('Số mẫu GPS chấp nhận: ' + (status?.acceptedCount ?? 0).toString()),
         Text('Trạng thái: ' + (status?.state ?? 'Chưa xác định')),
+        Text('Chủ GPS: ' + (status?.owner ?? 'Chưa xác định')),
+        Text('ACK/heartbeat: ' +
+            (status?.acknowledged == true ? 'Đã xác nhận' : 'Chưa xác nhận')),
         if (status != null && status.lastTrustedAgeMs >= 0)
           Text('Tuổi mẫu GPS: ' + status.lastTrustedAgeMs.toString() + ' ms'),
         const SizedBox(height: 22),

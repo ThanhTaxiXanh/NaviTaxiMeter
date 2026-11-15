@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../core/lab_session_safety.dart';
+import '../core/location_owner_gate.dart';
 import '../core/metered_trip_coordinator.dart';
 import '../core/taximeter_engine.dart';
 import '../data/trip_repository.dart';
@@ -32,6 +33,7 @@ class _GpsLabPageState extends State<GpsLabPage>
 
   Future<void> _operations = Future<void>.value();
   StreamSubscription<Position>? _stream;
+  LocationOwnerLease? _lease;
   Timer? _watchdog;
   MeterGpsObservation? _lastObservation;
   ConfirmedTariff? _confirmedTariff;
@@ -131,6 +133,11 @@ class _GpsLabPageState extends State<GpsLabPage>
         throw StateError('Chưa được cấp quyền vị trí.');
       }
       if (!mounted || _closing || !_activityVisible) return;
+      _lease = await LocationOwnerLease.acquire('lab');
+      if (!mounted || _closing || !_activityVisible) {
+        await _stopGps();
+        return;
+      }
       const notification = ForegroundNotificationConfig(
         notificationTitle: 'NaviTaxiMeter · Thử GPS',
         notificationText: 'Chỉ thử ghi GPS cục bộ, không thu cước.',
@@ -233,6 +240,11 @@ class _GpsLabPageState extends State<GpsLabPage>
           at: DateTime.now(), foregroundStreamActive: false);
       }
     });
+    final lease = _lease;
+    if (lease != null) {
+      await lease.release();
+      _lease = null;
+    }
     if (mounted && !_closing) {
       setState(() => _message = 'GPS đã dừng; phiên thử đã được tạm ngắt.');
     }

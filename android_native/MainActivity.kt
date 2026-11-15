@@ -34,6 +34,30 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "status" -> result.success(LocationSafetyService.snapshot())
+                    "ownerStatus" -> result.success(LocationOwnerRegistry.snapshot())
+                    "acquire" -> {
+                        val owner = call.argument<String>("owner")
+                        if (!resumed) {
+                            result.error("NOT_VISIBLE", "Activity must be resumed", null)
+                        } else if (owner != "preview" && owner != "lab") {
+                            result.error("INVALID_OWNER", "Only test GPS modes may claim", null)
+                        } else {
+                            val lease = LocationOwnerRegistry.claim(owner)
+                            if (lease == null) {
+                                result.error("GPS_BUSY", "Location service already owned", null)
+                            } else {
+                                result.success(mapOf("owner" to owner, "leaseId" to lease))
+                            }
+                        }
+                    }
+                    "release" -> {
+                        val owner = call.argument<String>("owner")
+                        val lease = call.argument<Number>("leaseId")?.toLong()
+                        result.success(
+                            if (owner == null || lease == null) false
+                            else LocationOwnerRegistry.release(owner, lease)
+                        )
+                    }
                     "start" -> {
                         if (!resumed) {
                             result.error("NOT_VISIBLE", "Activity must be visible", null)
@@ -66,22 +90,39 @@ class MainActivity : FlutterActivity() {
                                 "Allow notifications, then tap Start again", null)
                             return@setMethodCallHandler
                         }
+                        val lease = LocationOwnerRegistry.claim("native_safety")
+                        if (lease == null) {
+                            result.error("GPS_BUSY", "Location service already owned", null)
+                            return@setMethodCallHandler
+                        }
                         try {
                             val intent = Intent(this, LocationSafetyService::class.java)
                                 .setAction(LocationSafetyService.ACTION_START)
+                                .putExtra(LocationSafetyService.EXTRA_LEASE_ID, lease)
                             if (Build.VERSION.SDK_INT >= 26) {
                                 startForegroundService(intent)
                             } else {
                                 startService(intent)
                             }
-                            // Dispatch only; status() must confirm actual start.
-                            result.success(true)
+                            // Dispatch is NOT startup ACK: verify status & heartbeat.
+                            result.success(mapOf("requestAccepted" to true, "leaseId" to lease))
                         } catch (e: Exception) {
+                            LocationOwnerRegistry.release("native_safety", lease)
                             result.error("FGS_START_FAILED", e.message, null)
                         }
                     }
                     "stop" -> {
+                        val expected = call.argument<Number>("leaseId")?.toLong()
+                        if (expected != null &&
+                            !LocationOwnerRegistry.matches("native_safety", expected)
+                        ) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
                         stopService(Intent(this, LocationSafetyService::class.java))
+                        if (LocationSafetyService.snapshot()["active"] != true) {
+                            LocationOwnerRegistry.cancelPendingSafety()
+                        }
                         result.success(true)
                     }
                     else -> result.notImplemented()

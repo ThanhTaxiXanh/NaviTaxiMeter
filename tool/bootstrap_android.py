@@ -52,7 +52,7 @@ def check():
         raise ValueError("Native service declaration is missing/unsafe")
     if "android.permission.ACCESS_BACKGROUND_LOCATION" in content:
         raise ValueError("Unexpected background location permission")
-    for name in ("MainActivity.kt", "LocationSafetyService.kt"):
+    for name in ("MainActivity.kt", "LocationSafetyService.kt", "LocationOwnerRegistry.kt"):
         dst = TARGET / name
         if not dst.is_file() or dst.read_bytes() != (SOURCE / name).read_bytes():
             raise ValueError("Native Kotlin source not installed exactly: " + name)
@@ -66,7 +66,7 @@ def install():
         encoding="utf-8",
     )
     TARGET.mkdir(parents=True, exist_ok=True)
-    for name in ("MainActivity.kt", "LocationSafetyService.kt"):
+    for name in ("MainActivity.kt", "LocationSafetyService.kt", "LocationOwnerRegistry.kt"):
         shutil.copyfile(SOURCE / name, TARGET / name)
     check()
 
