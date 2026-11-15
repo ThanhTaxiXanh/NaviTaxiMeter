@@ -30,8 +30,8 @@ JVM_TEST_SOURCES = ("LocationOwnerRegistryTest.kt", "TripCheckpointProtocolTest.
 DEBUG_SOURCES = ("HeadlessSqliteProbeService.kt",)
 ANDROID_TEST_SOURCES = ("HeadlessSqliteProbeInstrumentedTest.kt",)
 DEBUG_SERVICE_TAG = (
-    '        <service android:name=".HeadlessSqliteProbeService"\\n'
-    '            android:exported="false" />\\n'
+    '        <service android:name=".HeadlessSqliteProbeService"\n'
+    '            android:exported="false" />\n'
 )
 PERMISSIONS = (
     "android.permission.ACCESS_COARSE_LOCATION",
