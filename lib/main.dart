@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'src/lab/headless_sqlite_probe.dart';
+
 import 'src/ui/gps_lab_page.dart';
 import 'src/ui/gps_preview_page.dart';
 import 'src/ui/tariff_management_page.dart';
@@ -80,3 +82,7 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
     ),
   );
 }
+
+/// Kotlin DEBUG-only bound-service entrypoint. Not used for customer fares.
+@pragma('vm:entry-point')
+Future<void> headlessSqliteProbeMain() => runHeadlessSqliteProbe();
