@@ -1,8 +1,9 @@
 import unittest
 from pathlib import Path
 from bootstrap_android import (
-    patch_manifest, patch_gradle, PERMISSIONS, UNIT_TEST_DEP,
-    NATIVE_SOURCES, JVM_TEST_SOURCES,
+    patch_manifest, patch_debug_manifest, patch_gradle, PERMISSIONS, UNIT_TEST_DEP,
+    NATIVE_SOURCES, JVM_TEST_SOURCES, RUNNER_LINE, ANDROID_TEST_DEPS,
+    DEBUG_SOURCES, ANDROID_TEST_SOURCES,
 )
 
 SAMPLE = """<manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -21,6 +22,30 @@ class AndroidBootstrapTests(unittest.TestCase):
         for permission in PERMISSIONS:
             self.assertIn(permission, manifest)
         self.assertNotIn("android.permission.ACCESS_BACKGROUND_LOCATION", manifest)
+
+    def test_debug_headless_probe_is_not_main_or_location_fgs(self):
+        debug = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\\n</manifest>'
+        rendered = patch_debug_manifest(debug)
+        self.assertEqual(rendered, patch_debug_manifest(rendered))
+        self.assertIn('android:name=".HeadlessSqliteProbeService"', rendered)
+        self.assertIn('android:exported="false"', rendered)
+        self.assertNotIn('android:foregroundServiceType=', rendered)
+        self.assertNotIn('HeadlessSqliteProbeService', patch_manifest(SAMPLE))
+        self.assertIn('HeadlessSqliteProbeService.kt', DEBUG_SOURCES)
+        self.assertIn('HeadlessSqliteProbeInstrumentedTest.kt', ANDROID_TEST_SOURCES)
+
+    def test_headless_probe_never_targets_app_database(self):
+        root = Path(__file__).resolve().parents[1]
+        dart = (root / 'lib/src/lab/headless_sqlite_probe.dart').read_text()
+        service = (root / 'android_native/HeadlessSqliteProbeService.kt').read_text()
+        device_test = (root / 'android_native/HeadlessSqliteProbeInstrumentedTest.kt').read_text()
+        self.assertIn('navitaximeter_HEADLESS_PROBE_ONLY.db', dart)
+        self.assertIn('isDedicatedHeadlessProbePath(dbPath)', dart)
+        self.assertNotIn('navitaximeter_v1.db', dart)
+        self.assertNotIn('LocationManager', service)
+        self.assertNotIn('startForeground', service)
+        self.assertIn('FlutterEngine(applicationContext)', service)
+        self.assertIn('writeAndRead', device_test)
 
     def test_location_owner_contract_sources(self):
         root = Path(__file__).resolve().parents[1] / "android_native"
@@ -66,6 +91,9 @@ class AndroidBootstrapTests(unittest.TestCase):
         source = 'plugins { id("com.android.application") }\n'
         first = patch_gradle(source)
         self.assertIn(UNIT_TEST_DEP, first)
+        self.assertIn(RUNNER_LINE, first)
+        for dep in ANDROID_TEST_DEPS:
+            self.assertIn(dep, first)
         self.assertEqual(first, patch_gradle(first))
         with self.assertRaises(ValueError):
             patch_gradle("android { }")
