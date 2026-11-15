@@ -1,3 +1,16 @@
+# TIẾP QUẢN CHAT HIỆN TẠI - LƯỢT 6/7 (16/11/2026 ICT)
+
+- Sau lượt trả lời này: **AI_REPLY_COUNT = 6/7**. LƯỢT AI TIẾP THEO = 7/7: PHẢI lập bản bàn giao mới đầy đủ 3.1–3.10 + phụ lục quy trình kiểm thử điện thoại, độc lập, đọc/kiểm lại repo/PR/issues/CI đúng SHA, không bắt đầu feature mới trước bàn giao.
+- Nhánh được phép duy nhất `feature/navitaximeter-foundation`, PR #1 OPEN/DRAFT, issue #2 Android vật lý OPEN/NOT TESTED, issue #3 one GNSS owner/SQLite writer OPEN. `main` và TTX reference READ-ONLY; không merge.
+- Baseline lượt 5: code HEAD `4175d86239efba4b5d55092376770d886d27ee8a`. Zero Cost Source Gate [43754959918](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43754959918) **SUCCESS**; Foundation Flutter Android [43754959417](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43754959417) **FULL SUCCESS** cả build-test (flutter analyze/test, debug APK, Kotlin JVM) và Android 14 emulator debug-only headless SQLite probe. Không phải GNSS physical hay production cước.
+- Lượt 6: tạo `test/support/issue3_service_ack_wire_bridge.dart`, `test/issue3_service_ack_wire_bridge_test.dart`, `docs/ISSUE_3_SERVICE_ACK_WIRE_BRIDGE_TEST_ONLY.md`. Serial native-like wire `IpcProposal.toWire/fromWire` → Dart `IpcCheckpointGate` → unified sqflite clone writer COMMIT → đọc lại durable fence, ACK, route, historical record và header → chỉ sau đó trả `trip.ack.v1`. Test 8 in-order concurrent, 8 identical replay, stale generation, conflicting payload, forged ACK ID, delayed delivery, post-COMMIT lost callback → PAUSED/reopen, malformed input. **Chỉ Dart test**, CHƯA phải native Kotlin MethodChannel/TripLocationService thật.
+- Commits P3 lượt này: `0d391b441a1b9c9a90a634fc86987b6e221f9359`, `473867f2b5d02287dd71cf6302d01942d940e03f`, `fc79162a9654fac2ef39227c8ff167f231b525d0`, `4f07f94ccc729a9d5099dada2c91d47b1b68c896`. **CI HEAD CUỐI CÙNG phải xác minh; không nhận PASS cho bài mới trước khi Flutter test hoàn tất.**
+- Chưa có single native GNSS owner, service-owned FlutterEngine, production durable ACK/ledger, v3→v4 migrate, backup prefs + SQLite thực, physical Android 11–16/OEM, map/UI/VietQR sản phẩm đủ 7 màn, release. Vẫn KHÔNG ĐƯỢC THU CƯỚC KHÁCH.
+- Bước tiếp theo: xác minh full Foundation/ZeroCost CI đúng SHA HEAD; nếu FAIL sửa, cập nhật trạng thái. **Lượt 7** phải bàn giao đầy đủ theo quy tắc cứng và phụ lục điện thoại, không được bỏ qua. Quy tắc dùng APK SHA/run, từng nút, PASS/FAIL/NOT TESTED, chứng cứ riêng tư đã che và cách gửi AI, không giả định người dùng có PC/ADB. Không yêu cầu test điện thoại nếu chưa có APK/button đúng.
+- Zero Paid API, không Google Billing/paid APIs, không merge main, không sửa TTX, không signed release, không auto migration app DB, không GPS mock làm dữ liệu tính cước thật.
+
+---
+
 # TIẾP QUẢN 16/11/2026 - CHAT MỚI, LƯỢT 3/7
 
 - AI_REPLY_COUNT = 3 sau lượt này, lượt 7/7 phải tạo bản bàn giao độc lập đầy đủ mục 3.1–3.10 và Phụ lục A; chat mới reset 0.
