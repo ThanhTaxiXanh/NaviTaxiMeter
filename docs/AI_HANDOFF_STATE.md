@@ -1,3 +1,15 @@
+# CẬP NHẬT SAU BÀN GIAO CHU KỲ 2: CHU KỲ MỚI 1/7 (15/11/2026)
+
+- AI_REPLY_COUNT bắt đầu 0 trong chat mới, bằng 1 sau câu trả lời tiếp quản này; bàn giao độc lập tiếp theo ở lượt 7.
+- Trước thay đổi: feature HEAD 0c3a37340cd2d4eb23883ed5dcf562bcc839994a, PR #1 OPEN/DRAFT/unmerged, main 539ff788b62be69135e5b3ad2c554dca005249a5, TTX read-only a40c246de6fd3799aaddedce3ed0d3b1d9dd524d; issue #2/#3 OPEN.
+- CI trên HEAD trước thay đổi: Zero Cost run 43728012965 SUCCESS; Foundation run 43728012982 IN PROGRESS tại thời điểm đọc (phải đối chiếu lại). Android emulator debug probe đã SUCCESS tại 85cfa50, run 43725473578.
+- Việc mới trong commit này: pure Dart typed IPC fence + one logical serialized test-writer queue, test late callbacks, same-sequence replay, 8 concurrent requests, unknown-commit PAUSED. Có tài liệu docs/ISSUE_3_IPC_PROOF_STATUS.md. Không nối Android runtime, SQLite app, GNSS hoặc engine tiền.
+- Chỉ phát test ACK khi injected writer Future trả về identity trùng, KHÔNG coi fake writer là bằng chứng SQLite COMMIT. Đã tạo mã/test; cần GitHub CI trên SHA mới để kết luận PASS.
+- Bước tiếp: issue #3 P3 fixture clone v3 + confirmed prefs backup/rollback, v4 dry-run và actual sqflite transaction gate/ACK ledger; staged immutable candidate; issue #2 Android physical giữ OPEN. Không auto migration, không thương mại.
+- Không merge main, không sửa TTX, không Google Billing hoặc API có phí, không thu cước khách, không signed release.
+
+---
+
 # CHU KỲ BÀN GIAO THỨ NHẤT: HOÀN THÀNH 7/7 (15/11/2026, ICT)
 
 **AI_REPLY_COUNT: 7/7** sau khi AI kết thúc lượt trả lời này. Bàn giao đã hoàn tất đầy đủ 3.1–3.10 trong tài liệu độc lập:
