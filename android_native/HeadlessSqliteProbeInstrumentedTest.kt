@@ -25,6 +25,8 @@ class HeadlessSqliteProbeInstrumentedTest {
     @Test
     fun boundHeadlessEngineCanOpenSqfliteAndReadCommittedProbe() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val destroyedBefore = HeadlessSqliteProbeService.destructionCount()
+        var lastCommittedProbeCount = -1
         val serviceReady = CountDownLatch(1)
         var binder: HeadlessSqliteProbeService.ProbeBinder? = null
         val connection = object : ServiceConnection {
@@ -99,8 +101,66 @@ class HeadlessSqliteProbeInstrumentedTest {
                 parallelErrors.isEmpty())
             assertEquals((initial + 1..initial + 8).toList(),
                 parallelCounts.sorted())
+            lastCommittedProbeCount = initial + 8
         } finally {
             context.unbindService(connection)
+        }
+
+        // A bound service with no remaining clients must be destroyed.
+        // The next bind must construct a fresh headless FlutterEngine, while
+        // a separate test-only SQLite database retains its committed count.
+        var destroyAttempts = 0
+        while (HeadlessSqliteProbeService.destructionCount() <= destroyedBefore &&
+               destroyAttempts++ < 150) {
+            Thread.sleep(100)
+        }
+        assertTrue("First debug headless service was not destroyed",
+            HeadlessSqliteProbeService.destructionCount() > destroyedBefore)
+        assertTrue("No committed count from first service", lastCommittedProbeCount >= 0)
+
+        val rebound = CountDownLatch(1)
+        var nextBinder: HeadlessSqliteProbeService.ProbeBinder? = null
+        val nextConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                nextBinder = service as? HeadlessSqliteProbeService.ProbeBinder
+                rebound.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                nextBinder = null
+            }
+        }
+        val reboundAccepted = context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            nextConnection, Context.BIND_AUTO_CREATE
+        )
+        assertTrue("Rebind to new debug headless engine failed", reboundAccepted)
+        try {
+            assertTrue("Second debug headless service did not connect",
+                rebound.await(20, TimeUnit.SECONDS))
+            val next = nextBinder
+            assertNotNull(next)
+            var readyAttempts = 0
+            while (next?.isReady() != true && readyAttempts++ < 150) {
+                Thread.sleep(100)
+            }
+            assertTrue("Second Dart engine never reported ready", next?.isReady() == true)
+            val completed = CountDownLatch(1)
+            var reboundValue: Any? = null
+            var reboundError: String? = null
+            next!!.writeAndRead { value, error ->
+                reboundValue = value
+                reboundError = error
+                completed.countDown()
+            }
+            assertTrue("Rebound Dart/sqflite call timed out",
+                completed.await(30, TimeUnit.SECONDS))
+            assertEquals("Rebound Dart/sqflite call failed", null, reboundError)
+            val counter = ((reboundValue as? Map<*, *>)?.get("rowCount")
+                as? Number)?.toInt()
+            assertEquals("SQLite readback lost state after engine teardown",
+                lastCommittedProbeCount + 1, counter)
+        } finally {
+            context.unbindService(nextConnection)
         }
     }
 }
