@@ -249,6 +249,76 @@ void main() {
     expect((await db.query('checkpoint_fence')).single['phase'], 'PAUSED');
   });
 
+
+  // The old recovery proof checked only row counts, session and a nonempty
+  // checkpoint ID. These injected edits must now be rejected before changing
+  // the durable phase to PAUSED, even when SQLite itself reports integrity OK.
+  for (final change in [
+    'money_header', 'route_position', 'ack_digest', 'checkpoint_id',
+    'gnss_fence', 'frozen_tariff',
+  ]) {
+    test('recovery rejects tampered last checkpoint: $change', () async {
+      await send(0);
+      await send(1);
+      final beforeRouteCount = await count('active_trip_route');
+      final beforeAckCount = await count('checkpoint_ack');
+
+      if (change == 'money_header') {
+        final changed = await header();
+        final meter = Map<String, dynamic>.from(changed['meter'] as Map);
+        meter['distanceMeters'] = 9999.0;
+        changed['meter'] = meter;
+        await db.update('active_trip', {
+          'payload': jsonEncode(changed),
+        }, where: 'id=?', whereArgs: [1]);
+      } else if (change == 'route_position') {
+        await db.update('active_trip_route', {
+          'latitude': 0.123,
+        }, where: 'sequence=?', whereArgs: [1]);
+      } else if (change == 'ack_digest') {
+        await db.update('checkpoint_ack', {
+          'sample_digest': List.filled(64, '0').join(),
+        }, where: 'sequence=?', whereArgs: [1]);
+      } else if (change == 'checkpoint_id') {
+        await db.update('checkpoint_ack', {
+          'checkpoint_id': 'forged-but-nonempty',
+        }, where: 'sequence=?', whereArgs: [1]);
+      } else if (change == 'gnss_fence') {
+        await db.update('checkpoint_fence', {
+          'last_gnss_nanos': fixes[1].gnssNanos + 1,
+        }, where: 'id=?', whereArgs: [1]);
+      } else if (change == 'frozen_tariff') {
+        final changed = await header();
+        final tariff = Map<String, dynamic>.from(changed['tariff'] as Map);
+        tariff['perKmRate'] = 99999.0;
+        changed['tariff'] = tariff;
+        await db.update('active_trip', {
+          'payload': jsonEncode(changed),
+        }, where: 'id=?', whereArgs: [1]);
+      }
+      await expectLater(UnifiedTestOnlyWorker.recoverPaused(db),
+          throwsStateError);
+      expect((await db.query('checkpoint_fence')).single['phase'],
+          'TEST_ACTIVE'); // Recovery transaction was not committed.
+      expect(await count('active_trip_route'), beforeRouteCount);
+      expect(await count('checkpoint_ack'), beforeAckCount);
+    });
+  }
+
+  test('recovery rejects fabricated money before the first ACK', () async {
+    final changed = await header();
+    final meter = Map<String, dynamic>.from(changed['meter'] as Map);
+    meter['distanceMeters'] = 7000.0;
+    changed['meter'] = meter;
+    await db.update('active_trip', {'payload': jsonEncode(changed)},
+        where: 'id=?', whereArgs: [1]);
+    await expectLater(UnifiedTestOnlyWorker.recoverPaused(db),
+        throwsStateError);
+    expect((await db.query('checkpoint_fence')).single['phase'],
+        'TEST_ACTIVE');
+    expect(await count('checkpoint_ack'), 0);
+  });
+
   test('external header tampering aborts before route and ACK insert',
       () async {
     await send(0);
