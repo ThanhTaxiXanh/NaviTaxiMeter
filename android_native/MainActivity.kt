@@ -113,17 +113,25 @@ class MainActivity : FlutterActivity() {
                     }
                     "stop" -> {
                         val expected = call.argument<Number>("leaseId")?.toLong()
-                        if (expected != null &&
-                            !LocationOwnerRegistry.matches("native_safety", expected)
-                        ) {
+                        if (expected == null || expected <= 0L) {
+                            result.error("LEASE_REQUIRED", "Exact safety lease required", null)
+                            return@setMethodCallHandler
+                        }
+                        if (!LocationOwnerRegistry.matches("native_safety", expected)) {
                             result.success(false)
                             return@setMethodCallHandler
                         }
-                        stopService(Intent(this, LocationSafetyService::class.java))
-                        if (LocationSafetyService.snapshot()["active"] != true) {
-                            LocationOwnerRegistry.cancelPendingSafety()
+                        try {
+                            stopService(Intent(this, LocationSafetyService::class.java))
+                            // Destroy releases a live service. Only a still-pending
+                            // request may be invalidated here, with its exact token.
+                            if (LocationSafetyService.snapshot()["active"] != true) {
+                                LocationOwnerRegistry.cancelPendingSafety(expected)
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("FGS_STOP_FAILED", e.message, null)
                         }
-                        result.success(true)
                     }
                     else -> result.notImplemented()
                 }

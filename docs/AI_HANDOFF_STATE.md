@@ -1,3 +1,27 @@
+## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 3/7 (15/11/2026)
+
+- **Đếm:** `AI_REPLY_COUNT = 3` sau khi hoàn tất lượt trả lời này;
+  bản bàn giao bắt buộc tiếp theo ở `7/7`, còn bốn lượt.
+- **GitHub đã xác minh trước chỉnh sửa:** HEAD `b362958f4a2442fca9acb999cd016d38d2d815bf`,
+  Flutter Android run `43710328017` SUCCESS, Zero Cost Gate run
+  `43710328023` SUCCESS, PR #1 còn Draft, `main` ở
+  `539ff788b62be69135e5b3ad2c554dca005249a5`.
+- **Đầu việc mới:** gia cố token của Android notification STOP và
+  `MainActivity.stop`, chặn `cancelPendingSafety` release sai token;
+  heartbeat tái kiểm tra quyền vị trí và provider; mở rộng test registry
+  JVM + Python. Chi tiết: `docs/GPS_SINGLE_OWNER_INTERLOCK.md`.
+- **Kiểm thử:** cần xem GitHub Actions tại HEAD mới của commit chứa thay
+  đổi ở trên. Không tự coi kết quả CI cũ là kiểm chứng code mới.
+- **Chưa làm:** test máy thật Android 11-16 và FGS/Geolocator teardown,
+  trip-owning service + ACK SQLite, phát hành thương mại.
+- **Giới hạn:** không merge main, không sửa TTX, không Google Billing,
+  không bật thu cước thật, không tạo vị trí/bản đồ/hóa đơn giả.
+- **Tiếp theo:** nếu CI đỏ, sửa lỗi tại branch; nếu xanh, kiểm thử Android
+  device/lifecycle, sau đó thiết kế thêm nguồn GNSS thật một owner có
+  checkpoint SQLite `PAUSED` fail-closed.
+
+---
+
 ## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 2/7 (15/11/2026)
 
 - **Bộ đếm:** AI_REPLY_COUNT = 2 sau lượt trả lời tiếp tục này;

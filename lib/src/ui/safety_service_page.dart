@@ -201,9 +201,22 @@ class _SafetyServicePageState extends State<SafetyServicePage>
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await _channel.invokeMethod<bool>('stop');
+      final owner = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+          'ownerStatus');
+      final lease = owner?['leaseId'];
+      if (owner?['owner'] != 'native_safety' ||
+          lease is! int || lease <= 0) {
+        if (mounted) setState(() => _message = 'Không có GPS nền để dừng.');
+        await _refresh();
+        return;
+      }
+      final accepted = await _channel.invokeMethod<bool>(
+          'stop', <String, Object>{'leaseId': lease});
+      if (accepted != true) {
+        throw StateError('Token GPS đã thay đổi; không dừng phiên khác.');
+      }
       await _refresh();
-      if (mounted) setState(() => _message = 'Đã gửi lệnh dừng.');
+      if (mounted) setState(() => _message = 'Đã gửi lệnh dừng có xác nhận token.');
     } catch (error) {
       if (mounted) setState(() => _message = error.toString());
     } finally {

@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -69,16 +70,41 @@ class LocationSafetyService : Service(), LocationListener {
     }
 
     private var manager: LocationManager? = null
+    private var registeredProvider: String? = null
     private var updatesRegistered = false
+
+    private fun providerStillEnabled(): Boolean {
+        val provider = registeredProvider ?: return false
+        return try {
+            manager?.isProviderEnabled(provider) == true
+        } catch (_: SecurityException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
+        }
+    }
     private val heartbeatHandler = Handler(Looper.getMainLooper())
     private val heartbeat = object : Runnable {
         override fun run() {
-            if (active && LocationOwnerRegistry.matches("native_safety", serviceLeaseId)) {
-                lastHeartbeatElapsedMs = SystemClock.elapsedRealtime()
-                heartbeatHandler.postDelayed(this, 3000L)
-            } else {
-                state = "owner_lost"
-                stopSelf()
+            when {
+                !active ||
+                    !LocationOwnerRegistry.matches("native_safety", serviceLeaseId) -> {
+                    state = "owner_lost"
+                    stopSelf()
+                }
+                !hasLocationPermission() -> {
+                    state = "permission_revoked"
+                    stopSelf()
+                }
+                !providerStillEnabled() -> {
+                    state = "provider_disabled"
+                    stopSelf()
+                }
+                else -> {
+                    // A heartbeat proves only service liveness, not trusted GPS.
+                    lastHeartbeatElapsedMs = SystemClock.elapsedRealtime()
+                    heartbeatHandler.postDelayed(this, 3000L)
+                }
             }
         }
     }
@@ -104,6 +130,10 @@ class LocationSafetyService : Service(), LocationListener {
 
         val stopIntent = Intent(this, LocationSafetyService::class.java).apply {
             action = ACTION_STOP
+            putExtra(EXTRA_LEASE_ID, serviceLeaseId)
+            // Extras are not part of PendingIntent identity. A distinct
+            // URI prevents an old notification stop from targeting a new lease.
+            data = Uri.parse("navitaximeter://gps-safety/stop/$serviceLeaseId")
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         val stopAction = PendingIntent.getService(this, 8105, stopIntent, flags)
@@ -125,16 +155,26 @@ class LocationSafetyService : Service(), LocationListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val requestedLease = intent?.getLongExtra(EXTRA_LEASE_ID, -1L) ?: -1L
         if (intent?.action == ACTION_STOP) {
-            stopSelf()
+            if (active && serviceLeaseId == requestedLease &&
+                LocationOwnerRegistry.matches("native_safety", requestedLease)
+            ) {
+                state = "stop_requested"
+                stopSelf()
+            } else if (!active) {
+                // A stale stop is never allowed to stop a newer active lease.
+                stopSelf(startId)
+            }
             return START_NOT_STICKY
         }
-        val requestedLease = intent?.getLongExtra(EXTRA_LEASE_ID, -1L) ?: -1L
         if (intent?.action != ACTION_START ||
             !LocationOwnerRegistry.matches("native_safety", requestedLease)
         ) {
-            state = "owner_missing"
-            stopSelf(startId)
+            if (!active) {
+                state = "owner_missing"
+                stopSelf(startId)
+            }
             return START_NOT_STICKY
         }
         if (active && serviceLeaseId == requestedLease) return START_NOT_STICKY
@@ -144,19 +184,20 @@ class LocationSafetyService : Service(), LocationListener {
             stopSelf()
             return START_NOT_STICKY
         }
-        val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val provider = if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED && lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        ) LocationManager.GPS_PROVIDER else if (
-            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        ) LocationManager.NETWORK_PROVIDER else null
-        if (provider == null) {
-            state = "provider_disabled"
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
         try {
+            val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val provider = if (
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED &&
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            ) LocationManager.GPS_PROVIDER else if (
+                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            ) LocationManager.NETWORK_PROVIDER else null
+            if (provider == null) {
+                state = "provider_disabled"
+                stopSelf()
+                return START_NOT_STICKY
+            }
             // Foreground begins before location access; notification is always
             // visible in the OS foreground service manager.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -168,6 +209,7 @@ class LocationSafetyService : Service(), LocationListener {
                 startForeground(NOTIFICATION_ID, notification())
             }
             manager = lm
+            registeredProvider = provider
             acceptedCount = 0L
             latestAcceptedElapsedMs = 0L
             state = "acquiring"
@@ -185,6 +227,10 @@ class LocationSafetyService : Service(), LocationListener {
             stopSelf()
         } catch (_: IllegalArgumentException) {
             state = "provider_unavailable"
+            stopSelf()
+        } catch (_: RuntimeException) {
+            // Platform/OEM errors must not leave an ACK running without GPS.
+            state = "service_unavailable"
             stopSelf()
         }
         return START_NOT_STICKY
@@ -225,8 +271,10 @@ class LocationSafetyService : Service(), LocationListener {
     }
 
     override fun onProviderDisabled(provider: String) {
-        state = "provider_disabled"
-        stopSelf()
+        if (provider == registeredProvider) {
+            state = "provider_disabled"
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {
@@ -236,6 +284,8 @@ class LocationSafetyService : Service(), LocationListener {
             updatesRegistered = false
         }
         active = false
+        registeredProvider = null
+        manager = null
         latestAcceptedElapsedMs = 0L
         lastHeartbeatElapsedMs = 0L
         LocationOwnerRegistry.release("native_safety", serviceLeaseId)

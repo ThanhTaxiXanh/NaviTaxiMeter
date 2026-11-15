@@ -34,13 +34,18 @@ object LocationOwnerRegistry {
 
     @Synchronized
     fun snapshot(): Map<String, Any> = mapOf(
-        "owner" to owner, "occupied" to (owner != "none")
+        "owner" to owner,
+        "occupied" to (owner != "none"),
+        "leaseId" to (if (owner == "none") -1L else generation)
     )
 
+    /**
+     * Cancel only the safety start with the token that was dispatched.
+     * A delayed stop from an older session must never clear a newer owner.
+     * Caller must independently verify no live native service is running.
+     */
     @Synchronized
-    fun cancelPendingSafety(): Boolean {
-        if (owner != "native_safety") return false
-        owner = "none"
-        return true
+    fun cancelPendingSafety(expectedLeaseId: Long): Boolean {
+        return release("native_safety", expectedLeaseId)
     }
 }

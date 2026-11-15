@@ -93,3 +93,27 @@ không chứng minh Geolocator *thực sự* giải phóng foreground service ng
 khi Future cancel hoàn thành; chỉ thiết bị Android thật và quan sát
 FGS mới xác minh được cửa sổ giao thoa này. Các ca Home/lock,
 permission revoke, kill/reboot/Doze/OEM và chi phí vẫn chưa đo thực.
+
+## Gia cố phiên thông báo và heartbeat (15/11/2026, chu kỳ 3/7)
+
+Bổ sung fencing token khi xử lý các lệnh `stop` từ hai phía:
+- `MainActivity.stop` yêu cầu `leaseId` chính xác; từ chối request không có
+  token và stale token. `ownerStatus` báo token đang giữ cho tab
+  chẩn đoán dùng khi dừng.
+- `LocationOwnerRegistry.cancelPendingSafety(expectedLeaseId)` chỉ giải
+  phóng reservation đúng token; không dùng hàm reset owner không điều kiện.
+- Notification Android gắn `EXTRA_LEASE_ID` và một URI khác nhau theo
+  token vào `PendingIntent`; không chỉ thay `extras`, vì Android có thể
+  tái sử dụng pending intent khi chỉ extras thay đổi.
+- `LocationSafetyService` bỏ qua STOP với token cũ nếu có phiên mới đang
+  sống. START cũ cũng không được `stopSelf` làm gián đoạn phiên đang sống.
+- Heartbeat 3 giây kiểm tra lại quyền vị trí, nguồn vị trí đang đăng ký và
+  token owner; khi mất điều kiện, dừng dịch vụ, không duy trì ACK cũ.
+  Bắt `SecurityException` khi chọn provider trong `onStartCommand`.
+
+Đã mở rộng kiểm thử JVM của registry để bảo đảm token cũ không giải phóng
+owner mới. Kiểm thử nguồn Python kiểm tra cấu hình notification/session token
+và heartbeat. Việc FGS thực sự dừng trên Android sau thao tác cancellation,
+hoạt động của `PendingIntent` qua process death/permission revoke, và Doze/OEM
+**vẫn cần thử thiết bị thật**. Không có thay đổi liên quan tính cước,
+VietQR, Google Billing, hay SQLite thương mại.

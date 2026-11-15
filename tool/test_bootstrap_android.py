@@ -32,6 +32,10 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('LocationOwnerRegistry.matches("native_safety"', service)
         self.assertIn('"acknowledged" to acknowledged', service)
         self.assertIn('LocationOwnerRegistry.release("native_safety"', service)
+        self.assertIn('data = Uri.parse("navitaximeter://gps-safety/stop/', service)
+        self.assertIn('serviceLeaseId == requestedLease', service)
+        self.assertIn('!hasLocationPermission()', service)
+        self.assertIn('!providerStillEnabled()', service)
 
     def test_gradle_unit_test_patch_idempotent(self):
         source = 'plugins { id("com.android.application") }\n'

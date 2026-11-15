@@ -57,6 +57,25 @@ class LocationOwnerRegistryTest {
     }
 
     @Test
+    fun pendingSafetyStopRequiresMatchingLease() {
+        val old = requireNotNull(LocationOwnerRegistry.claim("native_safety"))
+        assertFalse(LocationOwnerRegistry.cancelPendingSafety(old + 1))
+        assertTrue(LocationOwnerRegistry.matches("native_safety", old))
+        assertTrue(LocationOwnerRegistry.cancelPendingSafety(old))
+        val next = requireNotNull(LocationOwnerRegistry.claim("native_safety"))
+        try {
+            assertFalse(LocationOwnerRegistry.cancelPendingSafety(old))
+            assertTrue(LocationOwnerRegistry.matches("native_safety", next))
+            val status = LocationOwnerRegistry.snapshot()
+            assertEquals("native_safety", status["owner"])
+            assertEquals(next, status["leaseId"])
+        } finally {
+            assertTrue(LocationOwnerRegistry.release("native_safety", next))
+        }
+        assertEquals(-1L, LocationOwnerRegistry.snapshot()["leaseId"])
+    }
+
+    @Test
     fun rejectInvalidOwnerOrInvalidToken() {
         assertNull(LocationOwnerRegistry.claim("passenger_fare"))
         assertNull(LocationOwnerRegistry.claim(""))
