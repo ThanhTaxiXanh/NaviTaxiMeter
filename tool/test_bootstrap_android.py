@@ -32,6 +32,8 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertNotIn('android:foregroundServiceType=', rendered)
         self.assertNotIn('HeadlessSqliteProbeService', patch_manifest(SAMPLE))
         self.assertIn('HeadlessSqliteProbeService.kt', DEBUG_SOURCES)
+        self.assertIn('HeadlessProbeCallbackFence.kt', DEBUG_SOURCES)
+        self.assertIn('HeadlessProbeCallbackFenceTest.kt', JVM_TEST_SOURCES)
         self.assertIn('HeadlessSqliteProbeInstrumentedTest.kt', ANDROID_TEST_SOURCES)
 
     def test_headless_probe_never_targets_app_database(self):
@@ -46,6 +48,11 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertNotIn('startForeground', service)
         self.assertIn('FlutterEngine(applicationContext)', service)
         self.assertIn('writeAndRead', device_test)
+        self.assertIn('callbackFence.close()', service)
+        self.assertIn('callbackFence.resolve(requestId, result, null)', service)
+        fence_test = (root / 'android_native/HeadlessProbeCallbackFenceTest.kt').read_text()
+        self.assertIn('destroyFailsPendingRequestAndRejectsLateSuccess', fence_test)
+        self.assertIn('stopFailsAllPendingWithoutDoubleCompleting', fence_test)
 
     def test_location_owner_contract_sources(self):
         root = Path(__file__).resolve().parents[1] / "android_native"
