@@ -82,7 +82,9 @@ void main() {
     final durable = await s.readDurable();
     expect(durable.meter['flatFare'], 43210);
     expect(durable.meter['waitingSeconds'], 10);
-    expect(durable.meter['distanceMeters'], greaterThan(60));
+    // Second stationary fix may be removed by GPS anti-jitter filter.
+    // Preserve the 33m initial movement; never assume a fake 66m trip.
+    expect(durable.meter['distanceMeters'], greaterThan(30));
     expect(s.publishedFare, 43210);
     final restored = durable.restore(
         at: t0.add(const Duration(days: 1)));
