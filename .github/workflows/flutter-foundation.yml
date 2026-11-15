@@ -25,16 +25,20 @@ jobs:
           cache: true
       - name: Generate Android project (no map or billing)
         run: flutter create . --platforms=android --org vn --project-name navitaximeter
-      - name: Inject permissions for native Geolocator foreground location
+      - name: Inject location permissions for the lab
         run: |
           python3 tool/bootstrap_android.py
           python3 tool/bootstrap_android.py --check
+      - name: Python safety tests
+        run: python3 -m unittest discover -s tool -p 'test_*.py' -v
       - run: rm -f test/widget_test.dart
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - run: flutter test
       - run: flutter build apk --debug
+      - name: Verify compiled Android GPS service and permissions
+        run: python3 tool/verify_apk_manifest.py
       - uses: actions/upload-artifact@v4
         with:
-          name: navitaximeter-gps-tariff-foundation-test-only
+          name: navitaximeter-gps-lab-DEBUG-only
           path: build/app/outputs/flutter-apk/app-debug.apk

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'src/ui/gps_lab_page.dart';
 import 'src/ui/gps_preview_page.dart';
 import 'src/ui/tariff_management_page.dart';
 
@@ -38,6 +39,7 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
     body: switch (_tab) {
       1 => const TariffManagementPage(),
       2 => const GpsPreviewPage(),
+      3 => const GpsLabPage(),
       _ => const SafeArea(child: Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: Column(
@@ -48,15 +50,15 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold,
                     color: Color(0xFF00D8F0))),
             SizedBox(height: 22),
-            Text('Bảng giá và GPS đang được kiểm thử',
+            Text('Đang kiểm thử GPS và lưu chuyến trong SQLite',
                  textAlign: TextAlign.center),
             SizedBox(height: 12),
             Text('CHƯA SẴN SÀNG THU CƯỚC', textAlign: TextAlign.center,
                 style: TextStyle(fontWeight: FontWeight.bold,
                     color: Color(0xFFFFB020))),
             SizedBox(height: 16),
-            Text('Có thể nhập bảng giá thực và xem GPS thật. '
-                 'Chưa có chuyến thu tiền, chưa hỗ trợ tự khôi phục GPS nền.',
+            Text('Có bảng giá xác nhận, GPS thật và phòng thử riêng. '
+                 'Chưa phát hành hóa đơn, chưa mở chức năng tính tiền cho khách.',
                  textAlign: TextAlign.center,
                  style: TextStyle(color: Color(0xFFA9C5D3))),
           ],
@@ -70,6 +72,7 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
         NavigationDestination(icon: Icon(Icons.info_outline), label: 'Trạng thái'),
         NavigationDestination(icon: Icon(Icons.price_change), label: 'Bảng giá'),
         NavigationDestination(icon: Icon(Icons.gps_fixed), label: 'GPS thử'),
+        NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Phòng thử'),
       ],
     ),
   );
