@@ -37,6 +37,8 @@ jobs:
       - run: flutter pub get
       - name: Kotlin Android location-owner JVM tests
         run: (cd android && ./gradlew :app:testDebugUnitTest --no-daemon)
+      - name: Compile headless SQLite Android instrumented test (not executed without device)
+        run: (cd android && ./gradlew :app:assembleDebugAndroidTest --no-daemon)
       - run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - run: flutter test
       - run: flutter build apk --debug
