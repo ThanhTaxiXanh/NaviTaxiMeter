@@ -1,3 +1,15 @@
+# TIẾP QUẢN CHU KỲ MỚI: LƯỢT 2/7 (15/11/2026)
+
+- AI_REPLY_COUNT = 2 sau lượt này. Bản bàn giao mới đầy đủ tại 7/7. Quy tắc cứng bản đầy đủ đã commit: `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md` (section 9 hướng dẫn rõ từng bước kiểm chứng điện thoại / bằng chứng / gửi AI).
+- GitHub HEAD trước công việc P3: `6dc68cae6e2f4d7b91569a2e9ddaa88c6877ac8b`, PR #1 OPEN/DRAFT/unmerged, main `539ff788`; TTX read-only `a40c246d`. Issue #2/#3 OPEN.
+- Lượt 1 code `bc5a9cf5`: Zero Cost PR 43729776609 SUCCESS; Foundation 43729776697 `build-test` SUCCESS nhưng `emulator-probe` CANCELLED sau push docs-only (không được gọi lỗi build hay full PASS). AVD debug proof 43725473578 trên code `85cfa50` vẫn SUCCESS.
+- Lượt 2 mới: `tool/v3_clone_migration_proof.py`, `tool/test_v3_clone_migration_proof.py`, `docs/ISSUE_3_V3_CLONE_MIGRATION_PROOF.md`: 10 local CPython tests PASS cho app-v3-shaped technical SQLite fixture, tariff prefs placeholder, snapshot/hash/restore và v4 dry-run transactional rollback. **KHÔNG** SQLite app production, `sqflite` Android, v2 migration hoặc physical GNSS.
+- CI trên SHA chứa thay đổi P3 phải xác minh riêng, không nhận PASS trước khi chạy. Không yêu cầu chủ dự án test điện thoại trong P3 Python.
+- Bước tiếp theo: verify CI P3; viết Dart sqflite app-clone tests/staged meter candidate/post-COMMIT durable fence+ledger. Không đụng DB/prefs thật; issue #2 chỉ thử điện thoại khi có APK đúng và hướng dẫn chi tiết theo hard rule section 9.
+- Không merge main, không sửa TTX, không Google Billing/paid APIs, không thu cước khách hoặc phát hành.
+
+---
+
 # CẬP NHẬT SAU BÀN GIAO CHU KỲ 2: CHU KỲ MỚI 1/7 (15/11/2026)
 
 - AI_REPLY_COUNT bắt đầu 0 trong chat mới, bằng 1 sau câu trả lời tiếp quản này; bàn giao độc lập tiếp theo ở lượt 7.
