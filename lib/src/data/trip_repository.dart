@@ -284,13 +284,47 @@ class TripRepository {
     });
   }
 
-  /// A completed trip and deletion of its checkpoint commit together.
-  /// On crash either the checkpoint or final receipt remains recoverable.
+  /// Atomically finalize exactly the trip referenced by the active
+  /// checkpoint. Repeating an identical completed receipt is safe; changing
+  /// an existing receipt, replacing a different session or skipping persisted
+  /// route samples is not. NEVER use REPLACE for a passenger receipt.
   Future<void> completeActive(TripRecord record) async {
+    final payload = record.encode();
     final db = await _db;
     await db.transaction((txn) async {
+      final saved = await txn.query('trips', columns: ['payload'],
+          where: 'id = ?', whereArgs: [record.id], limit: 1);
+      final active = await txn.query('active_trip', columns: ['payload'],
+          where: 'id = ?', whereArgs: [1], limit: 1);
+      if (saved.isNotEmpty) {
+        if (active.isEmpty && saved.single['payload'] == payload) return;
+        throw StateError('Mã hóa đơn trùng hoặc xung đột với chuyến đang chạy');
+      }
+      if (active.isEmpty) {
+        throw StateError('Không có checkpoint cho hóa đơn cần hoàn tất');
+      }
+      final decoded = jsonDecode(active.single['payload'] as String);
+      if (decoded is! Map || decoded['meter'] is! Map) {
+        throw const FormatException('Checkpoint chuyến không hợp lệ');
+      }
+      final startText = (decoded['meter'] as Map)['startedAt']?.toString();
+      final start = DateTime.tryParse(startText ?? '');
+      if (start == null ||
+          !start.isAtSameMomentAs(record.receipt.startedAt)) {
+        throw StateError('Hóa đơn không thuộc chuyến đang hoạt động');
+      }
+      if (decoded['routeStorage'] == 'sqlite-v3') {
+        final savedCount = await _routeCount(txn);
+        if (decoded['routeCount'] != savedCount ||
+            record.routePoints.length != savedCount) {
+          throw StateError('Hóa đơn không khớp các điểm GPS đã lưu');
+        }
+      } else if (decoded['routePoints'] is List &&
+          (decoded['routePoints'] as List).length != record.routePoints.length) {
+        throw StateError('Hành trình hóa đơn không khớp checkpoint cũ');
+      }
       await txn.insert('trips', _row(record),
-        conflictAlgorithm: ConflictAlgorithm.replace);
+          conflictAlgorithm: ConflictAlgorithm.abort);
       await txn.delete('active_trip_route');
       await txn.delete('active_trip', where: 'id = ?', whereArgs: [1]);
     });

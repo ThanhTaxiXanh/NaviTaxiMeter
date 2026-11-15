@@ -75,12 +75,13 @@ void main() {
   test('legacy full checkpoint replaced atomically by completed trip', () async {
     final db = await dbForTest();
     final repository = TripRepository(database: db);
-    await repository.saveActive('{"trip":"state1"}');
-    await repository.saveActive('{"trip":"state2"}');
-    expect(await repository.loadActive(), '{"trip":"state2"}');
-
     final engine = TaximeterEngine(tariff: tariff)..start(at: t0);
     engine.distanceMeters = 15000;
+    final snapshot = TripSessionSnapshot.fromEngine(engine).encode();
+    await repository.saveActive(snapshot);
+    await repository.saveActive(snapshot);
+    expect(await repository.loadActive(), snapshot);
+
     final receipt = engine.finish(at: t0.add(const Duration(minutes: 30)));
     final record = TripRecord.fromReceipt(receipt);
     await repository.completeActive(record);

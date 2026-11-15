@@ -1,14 +1,28 @@
 # NaviTaxiMeter · AI handoff · 2026-11-15
-AI_REPLY_COUNT = 3 (after this assistant response; 7-reply handoff required).
+AI_REPLY_COUNT = 4 (fourth completed response in this conversation).
 
 Repository: ThanhTaxiXanh/NaviTaxiMeter
 Branch: feature/navitaximeter-foundation
-Prior known good commit: 17fcb86d3a2acf0249a393ad825bee105af3f1b3
-PR #1: Draft, do NOT merge.
-TTX reference: ThanhTaxiXanh/TTX-AATaximeter branch feature/flutter-taximeter-foundation at a40c246de6fd3799aaddedce3ed0d3b1d9dd524d. Never mutate reference repository.
+PR: #1 Draft; do not merge.
+Prior commit: f7aac734041d3c6f0a9999c1218352b5f11c1ed2
+This task: new `MeteredTripCoordinator`, SQLite receipt immutability guards and regression tests.
+Latest commit SHA should be read from GitHub when this file is used; not specified here because the commit does not exist until this note is added.
 
-Current phase 2 work: driver-confirmed multi-tier tariffs with strict persisted decode and GPS preview powered by geolocator Android native foreground service. GPS preview does NOT run fare collection or persist route, and stops on page disposal. Android permissions injected in CI by tool/bootstrap_android.py. Must check fresh CI result, fix errors if needed. This is not proof of commercial fare, background survival, no billing or real-device battery/GPS testing.
+Foundation requirements: Flutter/Dart Android (applicationId vn.navitaximeter), Kotlin when required, zero unapproved paid API, no Google Cloud Billing auto-enable, no fake GPS/fares/POIs/turns, strict driver tariff confirmation, local SQLite trip journal, GPS fare separated from map camera, 7 user-supplied mockups, VietQR cash/bank-only, crash-safe recovery, no interference with TTX-AATaximeter or main. Vietnam map content and licenses require independent validation.
 
-Hard requirements: zero unapproved paid APIs; no Google Billing enabled; separate fare GPS vs smoothed map; 7 mockups; local SQLite completed trip data; VietQR cash/bank only; 1/50/100 users stress plan; Vietnam-facing Hoàng Sa, Trường Sa, Biển Đông content requirements with independent license checks; maintain signed production keystore; do not alter main without owner approval.
+Relevant files:
+- lib/src/core/metered_trip_coordinator.dart
+- lib/src/core/taximeter_engine.dart
+- lib/src/core/location_tracking_policy.dart
+- lib/src/data/trip_repository.dart
+- lib/src/data/trip_session_snapshot.dart
+- lib/src/domain/confirmed_tariffs.dart
+- lib/src/ui/gps_preview_page.dart
+- test/metered_trip_coordinator_test.dart
+- test/trip_repository_ffi_test.dart
+- docs/PHASE2_METER_SQLITE.md
+- tool/check_zero_cost_policy.py
 
-Next: CI status and any regressions. Then verified tariff + fresh trusted GPS + Android FGS coordinated session + SQLite checkpoint/restore + manual suspension/resume and no duplicate fare or receipt; only then enable real trips, with extensive device tests. Never overstate readiness.
+Current feature state: core coordinator is written and should be checked through CI; NOT connected to physical GPS screen yet. GPS preview uses Geolocator plugin-managed FGS and is non-metered. No production passenger trip UI. Tests use synthetic GPS only. No device-level/force-stop proof, Google Billing proof or release signing. Next work: fix any failed CI tests, then integrate real GPS service ownership and supervised test-only trip UI, persist checkpoints and verify on physical Android. Never claim ready to charge fares.
+
+7-reply transfer rule: after 6 ordinary replies, seventh reply must contain full standalone handoff. Current status after this reply: 4/7.
