@@ -1,3 +1,17 @@
+# TIẾP QUẢN 16/11/2026 - CHAT MỚI, LƯỢT 3/7
+
+- AI_REPLY_COUNT = 3 sau lượt này, lượt 7/7 phải tạo bản bàn giao độc lập đầy đủ mục 3.1–3.10 và Phụ lục A; chat mới reset 0.
+- Nhánh duy nhất được ghi: `feature/navitaximeter-foundation`; PR #1 OPEN/DRAFT/unmerged, issue #3 OPEN, issue #2 OPEN/NOT TESTED PHYSICAL. Không merge main, không sửa TTX tham chiếu.
+- Baseline code commit `23f9b3f2e69e91fe87e5f924dc0a78beb6853768`: ZeroCost run `43747250593` SUCCESS; Foundation `build-test` run `43747250565` SUCCESS (`flutter analyze/test`, debug APK). Android 14 emulator-probe phải đọc riêng conclusion, không nhận là physical GPS.
+- Lượt 3 đã viết bộ lịch sử ACK trên DB clone CHỈ THỬ: `test/support/issue3_historical_ack_chain.dart`, chỉnh `test/support/issue3_unified_checkpoint_writer.dart` và `test/issue3_unified_checkpoint_test.dart`. Một transaction chứa synthetic route + staged fare/header + fence + ACK + history; kiểm tra chuỗi của toàn bộ điểm khi recovery; 8 ca sửa checkpoint cũ, lỗi INSERT history, khôi phục PAUSED. Các code commits: `90cbdfef`, `d985cc9b`, `74faf0fb`. Docs `docs/ISSUE_3_HISTORICAL_ACK_CHAIN_TEST_ONLY.md` ghi giới hạn và review coordinator.
+- Zero Cost Gate code SHA `74faf0fbbfc759e216ffc21c1cdc816b815e35ea` run `43748400019` SUCCESS. Foundation run `43748400050` chưa có kết luận ở lúc ghi trạng thái; commit docs có thể khiến run code bị CANCELLED, phải kiểm CI trên HEAD cuối cùng. **Chưa được đánh dấu new chain tests PASS** nếu không có `flutter test` của đúng SHA.
+- Giới hạn bắt buộc: hash không khoá trong cùng file DB không chống người sửa toàn bộ DB; history helper và bảng bổ sung chỉ dùng CLONE. Chưa có production GNSS FGS owner hoặc SQLite writer/ACK, không migration app DB v3, không Android thật, không được thu cước.
+- Review runtime: `MeteredTripCoordinator.accept/_suspend/resume/finish` vẫn mutate engine trước SQLite COMMIT; `begin` tạo reservation và initial route trong hai transaction. Tiếp theo xác minh full CI/fix tests, sau đó thiết kế staging coordinator theo fault/recovery test gate, rồi native IPC debug instrumented emulator, issue #2 physical.
+- Quy tắc thử Android thật mục 9 không đổi: chỉ yêu cầu khi có APK/run/SHA và hướng dẫn từng nút, PASS/FAIL/NOT TESTED, bằng chứng được che thông tin riêng và cách gửi AI. Không đòi người dùng PC/ADB.
+- Không Google Billing/API trả phí, không signed release, không thương mại, không tạo GPS/route/QR giả làm dữ liệu thật.
+
+---
+
 # TIẾP QUẢN SAU BÀN GIAO 16/11/2026 - LƯỢT 2/7 (CHAT MỚI)
 
 - Trong chat tiếp quản hiện tại: AI_REPLY_COUNT=2 sau lượt này; lượt thứ 7 tạo BẢN BÀN GIAO ĐẦY ĐỦ 3.1-3.10 + Phụ lục A, không tự đếm tiếp từ chat cũ.
