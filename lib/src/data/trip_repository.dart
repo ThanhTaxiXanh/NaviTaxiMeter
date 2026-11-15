@@ -170,6 +170,50 @@ class TripRepository {
     });
   }
 
+  /// Atomically create a trip WITH its first verified GPS route point.
+  /// The previous two-step beginActive() + saveActiveIncremental() could
+  /// durably reserve a session without its initial route on the second write
+  /// failing. Neither a partial header nor a route row may survive a failure.
+  ///
+  /// This stays on the existing SQLite v3 schema. It is NOT the eventual
+  /// native service-owned durable session/ACK protocol of Issue #3.
+  Future<void> beginActiveWithInitialFix({
+    required TripSessionSnapshot snapshot,
+    required TripRoutePoint initialPoint,
+  }) async {
+    final startedAt = snapshot.meter['startedAt']?.toString();
+    if (startedAt == null || DateTime.tryParse(startedAt) == null ||
+        snapshot.meter['status'] != MeterStatus.running.name ||
+        snapshot.routePoints.isNotEmpty) {
+      throw const FormatException('Invalid new-trip baseline snapshot');
+    }
+    final validated = TripRoutePoint.fromJson(initialPoint.toJson());
+    if (validated.segment != 0) {
+      throw const FormatException('Initial route must start at segment 0');
+    }
+    final db = await _db;
+    await db.transaction((txn) async {
+      final existing = await txn.query('active_trip', columns: ['id'],
+          where: 'id = ?', whereArgs: [1], limit: 1);
+      if (existing.isNotEmpty) {
+        throw StateError('Không ghi đè chuyến chưa được lưu hoàn tất');
+      }
+      // Purge only orphaned route rows when NO active trip exists. If either
+      // insert fails, this deletion and both new rows are rolled back.
+      await txn.delete('active_trip_route');
+      await txn.insert('active_trip', {
+        'id': 1,
+        'payload': snapshot.encodeSqliteHeader(routeCount: 1),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.abort);
+      await txn.insert('active_trip_route', _routeRow(0, validated),
+          conflictAlgorithm: ConflictAlgorithm.abort);
+      if (await _routeCount(txn) != 1) {
+        throw StateError('Initial GPS route not durable');
+      }
+    });
+  }
+
   /// One atomic write contains the current meter and ONLY NEW GPS points.
   /// Exact replay of already-committed rows is idempotent. A duplicate
   /// sequence with different content is a conflict, never silently ignored.
