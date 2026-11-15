@@ -26,8 +26,11 @@ NATIVE_SOURCES = (
     "MainActivity.kt", "LocationSafetyService.kt",
     "LocationOwnerRegistry.kt", "TripCheckpointProtocol.kt",
 )
-JVM_TEST_SOURCES = ("LocationOwnerRegistryTest.kt", "TripCheckpointProtocolTest.kt")
-DEBUG_SOURCES = ("HeadlessSqliteProbeService.kt",)
+JVM_TEST_SOURCES = (
+    "LocationOwnerRegistryTest.kt", "TripCheckpointProtocolTest.kt",
+    "HeadlessProbeCallbackFenceTest.kt",
+)
+DEBUG_SOURCES = ("HeadlessSqliteProbeService.kt", "HeadlessProbeCallbackFence.kt")
 ANDROID_TEST_SOURCES = ("HeadlessSqliteProbeInstrumentedTest.kt",)
 DEBUG_SERVICE_TAG = (
     '        <service android:name=".HeadlessSqliteProbeService"\n'
