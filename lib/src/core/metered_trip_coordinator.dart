@@ -154,17 +154,17 @@ class MeteredTripCoordinator {
       accuracyMeters: initial.fix.accuracyMeters,
       speedKmh: initial.fix.speedKmh,
     );
-    // The first transaction reserves a unique unfinished session. If the
-    // second write fails, restart/recover the reserved checkpoint safely.
-    await _repository.beginActive(_snapshot(meter));
+    // Reserve the trip and its initial GNSS baseline in ONE v3 SQLite
+    // transaction. If COMMIT/ACK is uncertain, expose neither the candidate
+    // fare nor route; the next coordinator must inspect durable recovery.
     try {
-      await _repository.saveActiveIncremental(
+      await _repository.beginActiveWithInitialFix(
         snapshot: _snapshot(meter),
-        routeStartIndex: 0,
-        appendedPoints: [first],
+        initialPoint: first,
       );
     } catch (_) {
       _faulted = true;
+      _locationPolicy.clear();
       rethrow;
     }
     _meter = meter;
