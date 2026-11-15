@@ -1,6 +1,7 @@
 import unittest
+from pathlib import Path
 
-from verify_apk_manifest import verify_texts, SERVICE, REQUIRED
+from verify_apk_manifest import verify_texts, aapt_command, SERVICE, REQUIRED
 
 class CompiledManifestTests(unittest.TestCase):
     def fake(self):
@@ -13,6 +14,14 @@ class CompiledManifestTests(unittest.TestCase):
             "uses-permission: name='" + name + "'" for name in REQUIRED)
         badging = "package: name='vn.navitaximeter' versionCode='4'"
         return service, permissions, badging
+
+    def test_aapt_cli_places_apk_before_xml_asset(self):
+        apk = Path("build/app/outputs/flutter-apk/app-debug.apk")
+        self.assertEqual(aapt_command("/sdk/aapt", "xmltree", apk),
+                         ["/sdk/aapt", "dump", "xmltree", str(apk),
+                          "AndroidManifest.xml"])
+        self.assertEqual(aapt_command("/sdk/aapt", "badging", apk),
+                         ["/sdk/aapt", "dump", "badging", str(apk)])
 
     def test_correct_compiled_manifest(self):
         verify_texts(*self.fake())

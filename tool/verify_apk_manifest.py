@@ -53,15 +53,23 @@ def aapt_tool():
         return tuple(int(x) for x in re.findall(r"\d+", p.parent.name))
     return sorted(paths, key=version)[-1]
 
+def aapt_command(aapt, kind, apk):
+    # aapt dump xmltree takes APK first, then the embedded XML asset name.
+    base = [aapt, "dump", kind, str(apk)]
+    return base + ["AndroidManifest.xml"] if kind == "xmltree" else base
+
+
 def verify_apk():
     if not APK.is_file():
         raise ValueError("APK missing: " + str(APK))
     aapt = str(aapt_tool())
-    def dump(*args):
-        return subprocess.check_output([aapt, "dump", *args, str(APK)],
-             text=True, stderr=subprocess.STDOUT)
+    def dump(kind):
+        return subprocess.check_output(
+            aapt_command(aapt, kind, APK),
+            text=True, stderr=subprocess.STDOUT,
+        )
     verify_texts(
-        dump("xmltree", "AndroidManifest.xml"),
+        dump("xmltree"),
         dump("permissions"),
         dump("badging"),
     )
