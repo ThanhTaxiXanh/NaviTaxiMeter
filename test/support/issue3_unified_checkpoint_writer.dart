@@ -16,12 +16,10 @@ enum UnifiedFailAt {
   none, beforeRoute, afterRoute, afterHeader, afterFence, afterLedger,
 }
 
-/// Binds the ledger identity to BOTH the trusted sample digest and the exact
-/// committed meter/header bytes; recovery must recompute this on the CLONE.
+/// Bind a synthetic sample digest to the exact committed header bytes.
 String unifiedTestCheckpointId(String sampleDigest, String headerText) {
   final headerDigest = sha256.convert(utf8.encode(headerText)).toString();
-  return sha256.convert(
-      utf8.encode('$sampleDigest:$headerDigest')).toString();
+  return sha256.convert(utf8.encode('$sampleDigest:$headerDigest')).toString();
 }
 
 /// One queued IPC gate, one Dart meter owner and one sqflite connection on a
@@ -262,8 +260,6 @@ class UnifiedTestOnlyWorker {
             header['routeStorage'] != 'sqlite-v3') {
           throw StateError('Invalid durable unified checkpoint');
         }
-        // No previously committed point exists to authenticate an edited
-        // initial meter. Require the untouched test baseline instead.
         if (last == -1 && (snapshot.meter['distanceMeters'] != 0 ||
             snapshot.meter['elapsedSeconds'] != 0 ||
             snapshot.meter['waitingSeconds'] != 0 ||
@@ -280,28 +276,13 @@ class UnifiedTestOnlyWorker {
               acks[i]['checkpoint_id'] is! String ||
               (acks[i]['checkpoint_id'] as String).isEmpty ||
               acks[i]['sample_digest'] is! String ||
-              !RegExp(r'^[0-9a-f]{64}
-        // independently of the persisted pre-crash running meter.
-        final restored = snapshot.restore(at: DateTime.utc(2026, 11, 16));
-        if (restored.status != MeterStatus.paused ||
-            !restored.requiresManualResume) {
-          throw StateError('Recovery did not fail closed');
-        }
-        await txn.update('checkpoint_fence', {'phase': 'PAUSED'},
-            where: 'id=?', whereArgs: [1]);
-        return snapshot;
-      });
-}
-).hasMatch(
+              !RegExp(r'^[0-9a-f]{64}$').hasMatch(
                   acks[i]['sample_digest'] as String)) {
             throw StateError('Corrupt route/ACK fence');
           }
         }
-        // The last durable ACK is a hash of the exact *last committed*
-        // header and sample. Authenticate its persisted route and GNSS
-        // nanos, instead of trusting a well-formed but altered money value.
-        // Old checkpoint IDs cannot be verified against the CURRENT header;
-        // full historical hash chaining remains a future proof gate.
+        // Authenticate last committed fare and GPS against its ACK identity.
+        // Full historical checkpoint hashing remains a future test gate.
         if (last >= 0) {
           final nanos = f['last_gnss_nanos'];
           final row = routes.last;
