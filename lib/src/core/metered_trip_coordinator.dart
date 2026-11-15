@@ -97,15 +97,22 @@ class MeteredTripCoordinator {
         fareProfileName: _fareProfile,
       );
 
-  Future<void> _checkpoint(List<TripRoutePoint> newlyAccepted) async {
-    final meter = _meter;
-    if (meter == null) throw StateError('Không có chuyến đang theo dõi');
+  /// Stage an immutable-to-read meter candidate. The published meter and
+  /// route MUST stay at the last known COMMITTED checkpoint until sqflite
+  /// confirms the transaction. On uncertain commit, fail closed and reload.
+  Future<void> _checkpoint(
+    TaximeterEngine candidate,
+    List<TripRoutePoint> newlyAccepted,
+  ) async {
+    if (_meter == null) throw StateError('Không có chuyến đang theo dõi');
     try {
       await _repository.saveActiveIncremental(
-        snapshot: _snapshot(meter),
+        snapshot: _snapshot(candidate),
         routeStartIndex: _savedPoints,
         appendedPoints: newlyAccepted,
       );
+      // All writes are committed before any candidate becomes visible.
+      _meter = candidate;
       _savedPoints += newlyAccepted.length;
       _route.addAll(newlyAccepted);
     } catch (_) {
@@ -220,8 +227,9 @@ class MeteredTripCoordinator {
         (lastFix != null && !observation.fix.timestamp.isAfter(lastFix))) {
       return false;
     }
-    if (!meter.acceptGps(observation.fix)) return false;
-    meter.tick(observation.receivedAt);
+    final candidate = meter.forkForCheckpoint();
+    if (!candidate.acceptGps(observation.fix)) return false;
+    candidate.tick(observation.receivedAt);
     final next = TripRoutePoint(
       latitude: observation.fix.latitude,
       longitude: observation.fix.longitude,
@@ -230,7 +238,7 @@ class MeteredTripCoordinator {
       speedKmh: observation.fix.speedKmh,
       segment: _segment,
     );
-    await _checkpoint([next]);
+    await _checkpoint(candidate, [next]);
     _lastTrustedAt = observation.receivedAt;
     _lastFixTimestamp = observation.fix.timestamp;
     _locationPolicy.acceptedFix(observation.receivedAt);
@@ -256,8 +264,11 @@ class MeteredTripCoordinator {
     final meter = _meter;
     if (meter == null || meter.status != MeterStatus.running) return;
     // Count only through the last *received trusted fix*, NOT wall time.
-    meter.suspendForInterruption(at: _lastTrustedAt ?? meter.startedAt);
-    await _checkpoint(const []);
+    // A failed PAUSED save must never expose an uncommitted metering tick.
+    final candidate = meter.forkForCheckpoint();
+    candidate.suspendForInterruption(
+        at: _lastTrustedAt ?? candidate.startedAt);
+    await _checkpoint(candidate, const []);
     _locationPolicy.clear();
   }
 
@@ -273,9 +284,10 @@ class MeteredTripCoordinator {
     if (!initial.isTrustedFor(meter)) {
       throw StateError('Chưa có GPS đủ tin cậy để tiếp tục');
     }
-    meter.resume(at: initial.receivedAt);
-    if (!meter.acceptGps(initial.fix)) {
-      meter.suspendForInterruption(at: initial.receivedAt);
+    final candidate = meter.forkForCheckpoint();
+    candidate.resume(at: initial.receivedAt);
+    if (!candidate.acceptGps(initial.fix)) {
+      // Published PAUSED meter is untouched, with no inferred gap charge.
       throw StateError('GPS tiếp tục không hợp lệ');
     }
     final nextSegment = _route.isEmpty ? 0 : _segment + 1;
@@ -287,7 +299,7 @@ class MeteredTripCoordinator {
       speedKmh: initial.fix.speedKmh,
       segment: nextSegment,
     );
-    await _checkpoint([first]);
+    await _checkpoint(candidate, [first]);
     _segment = nextSegment;
     _lastTrustedAt = initial.receivedAt;
     _lastFixTimestamp = initial.fix.timestamp;
@@ -308,16 +320,20 @@ class MeteredTripCoordinator {
       throw StateError('Không có chuyến hợp lệ để kết thúc');
     }
     if (meter.status == MeterStatus.running) await _suspend();
-    if (meter.status != MeterStatus.paused) {
+    final committed = _meter;
+    if (committed == null || committed.status != MeterStatus.paused) {
       throw StateError('Chuyến chưa ở trạng thái an toàn');
     }
-    final receipt = meter.finish(at: at);
+    // Receipt is assembled on a candidate; a failed completeActive() cannot
+    // turn the last durable PAUSED trip into a phantom finished trip.
+    final candidate = committed.forkForCheckpoint();
+    final receipt = candidate.finish(at: at);
     final record = TripRecord.fromReceipt(
       receipt,
       pickup: _pickup,
       dropoff: _dropoff,
       fareProfileName: _fareProfile,
-      tariffSnapshot: meter.tariff,
+      tariffSnapshot: candidate.tariff,
       routePoints: _route,
     );
     try {
