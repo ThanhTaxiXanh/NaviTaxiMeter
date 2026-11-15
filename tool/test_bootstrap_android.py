@@ -88,7 +88,7 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertNotIn("TaxiFare", source)
 
     def test_gradle_unit_test_patch_idempotent(self):
-        source = 'plugins { id("com.android.application") }\n'
+        source = 'plugins { id("com.android.application") }\nandroid { defaultConfig { } }\n'
         first = patch_gradle(source)
         self.assertIn(UNIT_TEST_DEP, first)
         self.assertIn(RUNNER_LINE, first)
