@@ -372,6 +372,41 @@ class TaximeterEngine {
     };
   }
 
+  /// Create an independent candidate from the complete *in-memory* meter.
+  ///
+  /// Trial-only staging primitive for issue #3. Unlike fromSnapshot(), this
+  /// preserves the private GPS anchor, monotonic tick, and waiting grace so
+  /// a candidate can be evaluated without mutating the published meter.
+  /// NEVER publish the result before the matching SQLite transaction commits.
+  /// This is not a persistent recovery method or a production writer switch.
+  TaximeterEngine forkForCheckpoint() {
+    // FareTier objects are immutable; freeze the list to prevent a caller
+    // mutating the candidate tariff while a transaction is pending.
+    final frozenTariff = _tariff.fareTiers == null
+        ? _tariff
+        : _tariff.copyWith(
+            fareTiers: List<FareTier>.unmodifiable(_tariff.fareTiers!));
+    return TaximeterEngine(tariff: frozenTariff)
+      ..status = status
+      ..startedAt = startedAt
+      .._lastTick = _lastTick
+      .._lastFix = _lastFix
+      .._distanceAnchor = _distanceAnchor
+      .._waitGraceAnchor = _waitGraceAnchor
+      .._waitGraceAtGap = _waitGraceAtGap
+      ..distanceMeters = distanceMeters
+      ..elapsedSeconds = elapsedSeconds
+      ..waitingSeconds = waitingSeconds
+      .._consecutiveWaitSeconds = _consecutiveWaitSeconds
+      ..speedKmh = speedKmh
+      ..maxSpeedKmh = maxSpeedKmh
+      ..tollFee = tollFee
+      ..surcharge = surcharge
+      ..discount = discount
+      ..flatFare = flatFare
+      .._interrupted = _interrupted;
+  }
+
   /// Restore as suspended/paused: never charge the app-off interval.
   /// The driver must deliberately resume and reestablish a GPS baseline.
   factory TaximeterEngine.fromSnapshot({

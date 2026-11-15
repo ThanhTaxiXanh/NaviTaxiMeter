@@ -1,3 +1,16 @@
+# TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 5/7 (15/11/2026)
+
+- AI_REPLY_COUNT = 5 sau lượt này; đến lượt 7 BẮT BUỘC bàn giao đầy đủ các mục 3.1–3.10. Hard Rule §9 hướng dẫn kiểm thử điện thoại đầy đủ vẫn lưu tại `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`; **chưa** yêu cầu user thử điện thoại.
+- HEAD trước việc mới `0e6e0cc4b064096d914a15bf63978f86567c7748`; PR #1 OPEN/DRAFT chưa merge, chỉ nhánh `feature/navitaximeter-foundation`; main và TTX không sửa. Issue #2/3 OPEN.
+- CI `0e6e0cc4`: Foundation run 43732807141 bước `flutter test` SUCCESS, `build-test` SUCCESS, `emulator-probe` còn chạy khi xác minh; ZeroCost 43732807126 SUCCESS. Không gọi full workflow PASS trước khi hoàn thành.
+- Mới: thêm API additive `TaximeterEngine.forkForCheckpoint()` sao chép toàn bộ private runtime state (đặc biệt GPS anchor + waiting/tick), chưa gọi trong production UI; `test/support/issue3_staged_fare_checkpoint.dart` thực hiện candidate-before-COMMIT trên DB V3 tạm riêng + frozen snapshot; `test/issue3_staged_fare_checkpoint_test.dart` có 10 bài mới gồm rollback trigger route và REPLACE header, deferred transaction/publish, 8 concurrent queued, restart PAUSED, no backfill. Chỉ test fake tariff/coords, không có passenger.
+- **CI SHA mới chưa được xác minh**; cần kiểm tra Flutter analyze/test đúng SHA và sửa nếu FAIL. Kết quả kiểm thử cũ không thể dùng thay mới.
+- Kết nối IPC P3C trước đó và staged fare P4 là **hai proof tách biệt**, chưa có real unified service-owned writer/ACK transaction. Source coordinator `MeteredTripCoordinator.accept` vẫn live mutate before commit, cũng cần refactor `resume`, `_suspend`, `finish` sau khi có test an toàn. Không chỉnh production DB schema.
+- Bước tiếp: verify new CI, thêm regression waiting grace/tiered fare/flat fare; sau đó mới đánh giá copy-on-write coordinator + Android test-only instrumentation, issue #2 physical GNSS. Không lặp lại Python/FFI proofs đã thành công.
+- Cấm merge main, sửa TTX, Billing/paid APIs, thu cước thật, signed release hay tự migrate v3→v4.
+
+---
+
 # TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 4/7 (15/11/2026)
 
 - AI_REPLY_COUNT = 4 sau lượt này; bàn giao bắt buộc đầy đủ ở lượt 7/7. Quy tắc §9 hướng dẫn kiểm thử điện thoại có trong `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`; **chưa** yêu cầu chủ dự án thử điện thoại.
