@@ -86,14 +86,14 @@ jobs:
           emulator-boot-timeout: 480
           script: cd android && ./gradlew :app:connectedDebugAndroidTest --no-daemon
       - name: Require executed Android test XML (compilation is NOT sufficient)
-        run: python3 tool/verify_android_probe_results.py android/app/build/outputs/androidTest-results/connected
+        run: python3 tool/verify_android_probe_results.py build/app/outputs/androidTest-results/connected
       - name: Keep minimal test reports (no location/trip logs)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: navitaximeter-headless-sqlite-emulator-DEBUG-only
           path: |
-            android/app/build/outputs/androidTest-results/connected/
-            android/app/build/reports/androidTests/connected/
+            build/app/outputs/androidTest-results/connected/
+            build/app/reports/androidTests/connected/
           retention-days: 2
           if-no-files-found: warn
