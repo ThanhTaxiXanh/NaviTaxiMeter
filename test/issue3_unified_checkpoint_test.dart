@@ -11,6 +11,7 @@ import 'package:navitaximeter/src/core/taximeter_engine.dart';
 import 'package:navitaximeter/src/data/trip_session_snapshot.dart';
 import 'package:navitaximeter/src/lab/trip_ipc_contract.dart';
 
+import 'support/issue3_historical_ack_chain.dart';
 import 'support/issue3_sqflite_clone_writer.dart';
 import 'support/issue3_staged_fare_checkpoint.dart';
 import 'support/issue3_unified_checkpoint_writer.dart';
@@ -73,6 +74,7 @@ void main() {
     expect(acks.map((a) => a.id).toSet().length, 8);
     expect(await count('active_trip_route'), 8);
     expect(await count('checkpoint_ack'), 8);
+    expect(await count('unified_checkpoint_history_test_only'), 8);
     final f = (await db.query('checkpoint_fence')).single;
     expect(f['last_sequence'], 7);
     expect(f['last_gnss_nanos'], fixes[7].gnssNanos);
@@ -203,6 +205,7 @@ void main() {
       expect(await header(), before);
       expect(await count('active_trip_route'), 0);
       expect(await count('checkpoint_ack'), 0);
+      expect(await count('unified_checkpoint_history_test_only'), 0);
       expect((await db.query('checkpoint_fence')).single['last_sequence'], -1);
       expect(worker.publishedFare, syntheticStageTariff.baseFare);
       await expectLater(send(0), throwsStateError); // No automatic retry.
@@ -317,6 +320,109 @@ void main() {
     expect((await db.query('checkpoint_fence')).single['phase'],
         'TEST_ACTIVE');
     expect(await count('checkpoint_ack'), 0);
+  });
+
+
+  // An earlier row could previously be modified while the final checkpoint
+  // stayed intact. Verify the entire *synthetic* history, not just the tail.
+  for (final change in [
+    'old_route', 'old_ack_digest', 'old_ack_id', 'old_gnss_nanos',
+    'old_fare_header', 'old_recorded_at', 'broken_prior_link',
+    'missing_history_row',
+  ]) {
+    test('history chain rejects earlier tampering: $change', () async {
+      await send(0);
+      await send(1);
+      await send(2);
+      final beforeLast = (await db.query('checkpoint_ack',
+          where: 'sequence=?', whereArgs: [2])).single['checkpoint_id'];
+      final beforeFare = worker.publishedFare;
+
+      if (change == 'old_route') {
+        await db.update('active_trip_route', {'latitude': 0.234},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'old_ack_digest') {
+        await db.update('checkpoint_ack',
+            {'sample_digest': List.filled(64, 'f').join()},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'old_ack_id') {
+        await db.update('checkpoint_ack',
+            {'checkpoint_id': 'old-checkpoint-tampered'},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'old_gnss_nanos') {
+        await db.update('unified_checkpoint_history_test_only',
+            {'gnss_nanos': fixes[0].gnssNanos + 1},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'old_fare_header') {
+        final saved = (await db.query('unified_checkpoint_history_test_only',
+            where: 'sequence=?', whereArgs: [0])).single;
+        final header = Map<String, dynamic>.from(
+            jsonDecode(saved['header_text'] as String) as Map);
+        final meter = Map<String, dynamic>.from(header['meter'] as Map);
+        meter['distanceMeters'] = 888.0;
+        header['meter'] = meter;
+        await db.update('unified_checkpoint_history_test_only',
+            {'header_text': jsonEncode(header)},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'old_recorded_at') {
+        await db.update('active_trip_route',
+            {'recorded_at': '2026-11-15T09:00:08.000Z'},
+            where: 'sequence=?', whereArgs: [0]);
+      } else if (change == 'broken_prior_link') {
+        await db.update('unified_checkpoint_history_test_only',
+            {'prior_history_id': 'forged-prior'},
+            where: 'sequence=?', whereArgs: [1]);
+      } else if (change == 'missing_history_row') {
+        await db.delete('unified_checkpoint_history_test_only',
+            where: 'sequence=?', whereArgs: [0]);
+      }
+
+      await expectLater(UnifiedTestOnlyWorker.recoverPaused(db),
+          throwsStateError);
+      expect((await db.query('checkpoint_fence')).single['phase'],
+          'TEST_ACTIVE'); // Recovery writes roll back on corruption.
+      expect((await db.query('checkpoint_ack',
+          where: 'sequence=?', whereArgs: [2])).single['checkpoint_id'],
+          beforeLast);
+      expect(worker.publishedFare, beforeFare);
+      await expectLater(send(3), throwsStateError);
+      expect(worker.gate.reason, 'commit_unknown');
+      expect(await count('active_trip_route'), 3);
+    });
+  }
+
+  test('history ledger SQL failure rolls back route+money+fence+ACK',
+      () async {
+    final originalHeader = await header();
+    await db.execute('''CREATE TRIGGER fail_history_test
+      BEFORE INSERT ON unified_checkpoint_history_test_only
+      WHEN NEW.sequence=0
+      BEGIN SELECT RAISE(ABORT, 'injected historical ledger fault'); END''');
+    await expectLater(send(0), throwsStateError);
+    expect(await header(), originalHeader);
+    expect(await count('active_trip_route'), 0);
+    expect(await count('checkpoint_ack'), 0);
+    expect(await count('unified_checkpoint_history_test_only'), 0);
+    expect((await db.query('checkpoint_fence')).single['last_sequence'], -1);
+    expect(worker.publishedFare, syntheticStageTariff.baseFare);
+  });
+
+  test('recovery confirms chain across all checkpoints and PAUSES',
+      () async {
+    await Future.wait([send(0), send(1), send(2), send(3)]);
+    expect(await count('unified_checkpoint_history_test_only'), 4);
+    final linked = await db.query('unified_checkpoint_history_test_only',
+        orderBy: 'sequence ASC');
+    expect(linked.first['prior_history_id'], unifiedHistoryGenesis);
+    for (var i = 1; i < linked.length; i++) {
+      expect(linked[i]['prior_history_id'], linked[i - 1]['history_id']);
+    }
+    final previousFare = worker.publishedFare;
+    final snapshot = await UnifiedTestOnlyWorker.recoverPaused(db);
+    expect(snapshot.meter['distanceMeters'], worker.publishedMeters);
+    expect(worker.publishedFare, previousFare);
+    expect((await db.query('checkpoint_fence')).single['phase'], 'PAUSED');
+    await expectLater(send(4), throwsStateError);
   });
 
   test('external header tampering aborts before route and ACK insert',
