@@ -19,12 +19,22 @@ class TestOnlyServiceAckBridge {
 
   final Database db;
   final IpcCheckpointGate gate;
+  // Serialize the entire proposal -> COMMIT -> readback -> ACK sequence.
+  // Serializing only the writer leaves a race between readback and next fix.
+  Future<void> _tail = Future<void>.value();
 
   /// Simulates a transport ACK that may be dropped AFTER COMMIT/readback.
   /// The callback is awaited; errors force the gate PAUSED.
   final Future<void> Function()? afterDurableReadback;
 
-  Future<Map<String, Object>> deliver(Map<dynamic, dynamic> wire) async {
+  Future<Map<String, Object>> deliver(Map<dynamic, dynamic> wire) {
+    final queued = _tail.then((_) => _deliverOne(wire));
+    _tail = queued.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return queued;
+  }
+
+  Future<Map<String, Object>> _deliverOne(
+      Map<dynamic, dynamic> wire) async {
     final proposal = IpcProposal.fromWire(wire);
     final ack = await gate.submit(proposal);
     try {
