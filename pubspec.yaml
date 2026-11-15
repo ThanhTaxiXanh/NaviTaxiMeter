@@ -1,12 +1,14 @@
 name: navitaximeter
 description: Android taxi metering core, no paid APIs
 publish_to: none
-version: 0.1.0+1
+version: 0.1.1+2
 environment:
   sdk: '>=3.11.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
+  geolocator: ^14.1.2
+  geolocator_android: ^5.2.1
   sqflite: ^2.4.2+1
   path: ^1.9.1
   shared_preferences: ^2.5.6
