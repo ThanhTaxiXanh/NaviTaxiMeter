@@ -45,4 +45,47 @@ void main() {
       await sandbox.delete(recursive: true);
     }
   });
+  test('single logical probe writer serializes eight concurrent requests',
+      () async {
+    final sandbox = await Directory.systemTemp.createTemp('navi-headless-test-');
+    try {
+      final dbPath = path.join(sandbox.path, headlessProbeDbName);
+      final writer = SerializedHeadlessProbeWriter();
+      final results = await Future.wait(List.generate(8, (_) =>
+          writer.writeAndVerify(databasePath: dbPath)));
+      final counts = results.map((result) => result['rowCount']).toList();
+      expect(counts, [1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(results.every((result) =>
+          result['probeOnly'] == true &&
+          result['passengerFareEnabled'] == false), isTrue);
+      final db = await openDatabase(dbPath, readOnly: true);
+      try {
+        expect(Sqflite.firstIntValue(await db.rawQuery(
+          'SELECT count FROM headless_probe WHERE id=1',
+        )), 8);
+      } finally {
+        await db.close();
+      }
+    } finally {
+      await sandbox.delete(recursive: true);
+    }
+  });
+
+  test('invalid request fails closed without poisoning serialized probe',
+      () async {
+    final sandbox = await Directory.systemTemp.createTemp('navi-headless-test-');
+    try {
+      final writer = SerializedHeadlessProbeWriter();
+      final wrong = path.join(sandbox.path, 'navitaximeter_v1.db');
+      final good = path.join(sandbox.path, headlessProbeDbName);
+      await expectLater(writer.writeAndVerify(databasePath: wrong),
+          throwsStateError);
+      final result = await writer.writeAndVerify(databasePath: good);
+      expect(result['rowCount'], 1);
+      expect(await File(wrong).exists(), isFalse);
+    } finally {
+      await sandbox.delete(recursive: true);
+    }
+  });
+
 }
