@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:navitaximeter/src/core/taximeter_engine.dart';
 import 'package:navitaximeter/src/data/trip_session_snapshot.dart';
+import 'package:navitaximeter/src/data/tariff_codec.dart';
 import 'package:navitaximeter/src/lab/trip_ipc_contract.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -13,6 +14,14 @@ import 'issue3_staged_fare_checkpoint.dart';
 
 enum UnifiedFailAt {
   none, beforeRoute, afterRoute, afterHeader, afterFence, afterLedger,
+}
+
+/// Binds the ledger identity to BOTH the trusted sample digest and the exact
+/// committed meter/header bytes; recovery must recompute this on the CLONE.
+String unifiedTestCheckpointId(String sampleDigest, String headerText) {
+  final headerDigest = sha256.convert(utf8.encode(headerText)).toString();
+  return sha256.convert(
+      utf8.encode('$sampleDigest:$headerDigest')).toString();
 }
 
 /// One queued IPC gate, one Dart meter owner and one sqflite connection on a
@@ -195,9 +204,7 @@ class UnifiedTestOnlyWorker {
         if (_failAt == UnifiedFailAt.afterFence) {
           throw StateError('Injected after fence');
         }
-        final id = sha256.convert(utf8.encode(
-            fix.digest + ':' +
-            sha256.convert(utf8.encode(nextHeader)).toString())).toString();
+        final id = unifiedTestCheckpointId(fix.digest, nextHeader);
         await txn.insert('checkpoint_ack', {
           'session_id': p.fence.sessionId,
           'generation': p.fence.generation,
@@ -250,8 +257,20 @@ class UnifiedTestOnlyWorker {
             last + 1 != routes.length || routes.length != acks.length ||
             header['routeCount'] != routes.length ||
             header['tariffHash'] != frozenTestTariffHash ||
-            snapshot.tariff.name != syntheticStageTariff.name) {
+            TariffCodec.encode(snapshot.tariff) !=
+                TariffCodec.encode(syntheticStageTariff) ||
+            header['routeStorage'] != 'sqlite-v3') {
           throw StateError('Invalid durable unified checkpoint');
+        }
+        // No previously committed point exists to authenticate an edited
+        // initial meter. Require the untouched test baseline instead.
+        if (last == -1 && (snapshot.meter['distanceMeters'] != 0 ||
+            snapshot.meter['elapsedSeconds'] != 0 ||
+            snapshot.meter['waitingSeconds'] != 0 ||
+            snapshot.meter['tollFee'] != 0 ||
+            snapshot.meter['surcharge'] != 0 ||
+            snapshot.meter['discount'] != 0)) {
+          throw StateError('Uncommitted meter baseline at recovery');
         }
         for (var i = 0; i < routes.length; i++) {
           if (routes[i]['sequence'] != i ||
@@ -259,8 +278,52 @@ class UnifiedTestOnlyWorker {
               acks[i]['session_id'] != 'TEST_SESSION_ONLY' ||
               acks[i]['generation'] != 7 ||
               acks[i]['checkpoint_id'] is! String ||
-              (acks[i]['checkpoint_id'] as String).isEmpty) {
+              (acks[i]['checkpoint_id'] as String).isEmpty ||
+              acks[i]['sample_digest'] is! String ||
+              !RegExp(r'^[0-9a-f]{64}
+        // independently of the persisted pre-crash running meter.
+        final restored = snapshot.restore(at: DateTime.utc(2026, 11, 16));
+        if (restored.status != MeterStatus.paused ||
+            !restored.requiresManualResume) {
+          throw StateError('Recovery did not fail closed');
+        }
+        await txn.update('checkpoint_fence', {'phase': 'PAUSED'},
+            where: 'id=?', whereArgs: [1]);
+        return snapshot;
+      });
+}
+).hasMatch(
+                  acks[i]['sample_digest'] as String)) {
             throw StateError('Corrupt route/ACK fence');
+          }
+        }
+        // The last durable ACK is a hash of the exact *last committed*
+        // header and sample. Authenticate its persisted route and GNSS
+        // nanos, instead of trusting a well-formed but altered money value.
+        // Old checkpoint IDs cannot be verified against the CURRENT header;
+        // full historical hash chaining remains a future proof gate.
+        if (last >= 0) {
+          final nanos = f['last_gnss_nanos'];
+          final row = routes.last;
+          if (nanos is! int || nanos <= 0 ||
+              row['recorded_at'] is! String ||
+              DateTime.tryParse(row['recorded_at'] as String) == null) {
+            throw StateError('Invalid last durable GNSS fence');
+          }
+          final lastFix = CloneFix(
+            sequence: last,
+            gnssNanos: nanos,
+            latitude: (row['latitude'] as num).toDouble(),
+            longitude: (row['longitude'] as num).toDouble(),
+            accuracy: (row['accuracy_meters'] as num).toDouble(),
+            speed: (row['speed_kmh'] as num).toDouble(),
+            segment: row['segment'] as int,
+          );
+          lastFix.validate();
+          if (acks.last['sample_digest'] != lastFix.digest ||
+              acks.last['checkpoint_id'] !=
+                  unifiedTestCheckpointId(lastFix.digest, text)) {
+            throw StateError('Last fare/route/ACK digest mismatch');
           }
         }
         // Snapshot restoration always creates PAUSED/interrupted state,
