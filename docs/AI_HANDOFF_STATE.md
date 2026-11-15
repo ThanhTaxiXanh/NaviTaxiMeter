@@ -1,3 +1,15 @@
+# TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 3/7 (15/11/2026)
+
+- AI_REPLY_COUNT = 3 sau lượt này; bàn giao bắt buộc tiếp theo ở lượt 7/7. Giữ nguyên HARD RULE §9: mọi yêu cầu thử trên điện thoại phải có bước thao tác, điều kiện PASS/FAIL, mẫu bằng chứng và cách gửi; chưa yêu cầu thử điện thoại tại lượt này.
+- HEAD trước khi sửa: 85de6187b0f6a166a8986c75a8f0b87559670c13, PR #1 OPEN/DRAFT/chưa merge, main 539ff788b62be69135e5b3ad2c554dca005249a5, TTX tham chiếu a40c246de6fd3799aaddedce3ed0d3b1d9dd524d. Issue #2/#3 OPEN.
+- CI của SHA 85de6187: Zero Cost 43731059286 SUCCESS; Foundation 43731059227 build-test SUCCESS, emulator-probe vẫn IN PROGRESS lúc kiểm tra. Không gán FULL SUCCESS cho run chưa hoàn thành.
+- Phần mới: chỉ test/support/issue3_sqflite_clone_writer.dart và test/issue3_sqflite_clone_ack_test.dart cộng docs/ISSUE_3_SQFLITE_CLONE_ACK_PROOF.md. Thử sqflite FFI transaction route + header + durable test fence + ledger, ack sau Future COMMIT, crash/lost-ACK mô phỏng, 8 concurrent và rollback; chỉ trên bản sao DB schema-v3-shaped với fixture không có cước thật.
+- Chưa có CI xác minh test mới tại SHA sẽ commit; chưa thử Android SQLite app clone thực, không có production GNSS service, physical Android issue #2 vẫn NOT TESTED.
+- Bước tiếp: xác minh CI đúng SHA mới, sửa lỗi nếu có; sau đó nối typed IPC gate với Dart test-only sqflite adapter, xây test staged immutable TaximeterEngine candidate, Android instrumentation trên DB debug riêng; tiếp tục physical gate issue #2 khi có quy trình/hướng dẫn rõ.
+- Tuyệt đối không merge main, không sửa TTX, không bật Google Billing/paid API, không thu cước khách, không auto-migrate DB sản phẩm.
+
+---
+
 # TIẾP QUẢN CHU KỲ MỚI: LƯỢT 2/7 (15/11/2026)
 
 - AI_REPLY_COUNT = 2 sau lượt này. Bản bàn giao mới đầy đủ tại 7/7. Quy tắc cứng bản đầy đủ đã commit: `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md` (section 9 hướng dẫn rõ từng bước kiểm chứng điện thoại / bằng chứng / gửi AI).
