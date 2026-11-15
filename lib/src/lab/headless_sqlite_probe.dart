@@ -73,6 +73,21 @@ Future<Map<String, Object?>> writeAndVerifyHeadlessProbe({
   }
 }
 
+/// One logical writer/queue for this *disposable probe*, not the trip DB.
+/// Serializing Dart method calls prevents overlapping SQLite probe mutations
+/// even when native sends multiple requests before earlier ACK callbacks.
+class SerializedHeadlessProbeWriter {
+  Future<void> _tail = Future<void>.value();
+
+  Future<Map<String, Object?>> writeAndVerify({String? databasePath}) {
+    final next = _tail.then((_) =>
+        writeAndVerifyHeadlessProbe(databasePath: databasePath));
+    // An erroneous request must fail its caller, but not poison the queue.
+    _tail = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
+  }
+}
+
 /// Entrypoint is referenced by name only from the *debug-only* Android service.
 /// No GPS subscriptions, routes, billing APIs, or commercial fare calculations.
 @pragma('vm:entry-point')
@@ -80,9 +95,10 @@ Future<void> runHeadlessSqliteProbe() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
   const channel = MethodChannel(headlessProbeChannel);
+  final writer = SerializedHeadlessProbeWriter();
   channel.setMethodCallHandler((call) async {
     if (call.method == 'writeAndRead') {
-      return writeAndVerifyHeadlessProbe();
+      return writer.writeAndVerify();
     }
     throw MissingPluginException('Unsupported headless probe method');
   });
