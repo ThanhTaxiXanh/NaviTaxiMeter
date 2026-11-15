@@ -134,7 +134,7 @@ void main() {
     final time = coordinator.elapsedSecondsForTesting;
     await blockNextRoute(2);
     await expectLater(coordinator.accept(fix(10, latitude: 21.0004)),
-        throwsStateError);
+        throwsA(isA<DatabaseException>()));
     expect(coordinator.storageFaulted, true);
     expect(coordinator.status, MeterStatus.paused);
     expect(coordinator.fareForTesting, money);
@@ -164,7 +164,7 @@ void main() {
     await expectLater(coordinator.watchdog(
       at: start.add(const Duration(seconds: 40)),
       foregroundStreamActive: false,
-    ), throwsStateError);
+    ), throwsA(isA<DatabaseException>()));
     expect(coordinator.storageFaulted, true);
     expect(coordinator.status, MeterStatus.paused);
     expect(coordinator.fareForTesting, money);
@@ -186,7 +186,7 @@ void main() {
     final route = coordinator.recordedRoute.toList();
     await blockNextRoute(1);
     await expectLater(coordinator.resume(fix(40, latitude: 21.05)),
-        throwsStateError);
+        throwsA(isA<DatabaseException>()));
     expect(coordinator.storageFaulted, true);
     expect(coordinator.status, MeterStatus.paused);
     expect(coordinator.requiresManualResume, true);
@@ -212,7 +212,7 @@ void main() {
     await expectLater(coordinator.finish(
       at: start.add(const Duration(seconds: 60)),
       driverConfirmed: true,
-    ), throwsStateError);
+    ), throwsA(isA<DatabaseException>()));
     expect(coordinator.storageFaulted, true);
     expect(coordinator.status, MeterStatus.paused);
     expect(coordinator.fareForTesting, money);
