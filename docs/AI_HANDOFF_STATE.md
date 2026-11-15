@@ -391,3 +391,14 @@ Quy trình CI cũng chạy `rm -f test/widget_test.dart` trước test vì file 
 > Hãy tiếp quản NaviTaxiMeter từ bản bàn giao bắt buộc 7/7 này. Kiểm tra GitHub hiện tại, giữ toàn bộ yêu cầu cứng và các phần đã làm, tiếp tục xử lý xung đột hai dịch vụ GPS và thiết kế service owner duy nhất với CI kiểm thử. Không merge main, không sửa TTX gốc, không mở thu cước hoặc Google Billing. Khởi tạo bộ đếm AI_REPLY_COUNT = 0 và bàn giao lại sau mỗi 7 lượt.
 
 **KẾT LUẬN:** Đã hoàn thành nền tảng có kiểm thử tự động. Chưa hoàn thành sản phẩm thương mại, chưa thử thiết bị thật, chưa có bản đồ, VietQR UI và 7 màn hình mockup. Mọi bước tiếp tục cần trung thực về trạng thái.
+
+
+## Tiếp quản 2026-11-15 — Chu kỳ mới, lượt 1/7
+
+- **AI_REPLY_COUNT:** ban đầu 0, sau lượt tiếp quản này = **1/7**. Bàn giao bắt buộc tiếp theo ở lượt 7; không reset giữa cùng cuộc trò chuyện.
+- **Bản bàn giao nguồn:** `docs/HANDOFF_2026-11-15_CYCLE_7-7.md` và quy tắc cứng 7 lượt do chủ dự án cung cấp.
+- **Đối chiếu trước thay đổi:** branch HEAD `05fd65f08631bba28d27fdb87ecd7a6d0713493d`, hơn code CI HEAD `c0af5ef6960a6358013b000fb9a947b6b8564a2a` đúng một docs-only commit. PR #1 OPEN/DRAFT/unmerged. main `539ff788b62be69135e5b3ad2c554dca005249a5`, TTX branch `a40c246de6fd3799aaddedce3ed0d3b1d9dd524d`, không thay đổi khi kiểm tra. Foundation PR `43718739681` SUCCESS, Zero Cost PR `43718739693` SUCCESS trên `05fd65f`.
+- **Tiến độ issue #3:** bổ sung `docs/ISSUE_3_SINGLE_OWNER_WRITER_ADR_DRAFT.md`; hướng proof có điều kiện là một Kotlin TripLocationService duy nhất sở hữu GNSS + một Dart headless TripSessionWorker (service-owned FlutterEngine) sở hữu fare-engine và SQLite writes; ACK sau transaction commit. Chưa chứng minh worker/background/sqflite; không implement production writer, không đổi schema.
+- **Điểm tiếp tục:** test lifecycle spike headless Android service với sqflite và non-overlap; yêu cầu ACK fence/sequence/ledger, staged state. Thiết kế v3→v4 backup/migration rồi mới instrumented tests. Issue #2 OPEN, chưa có device proof.
+- **Chú ý CI:** hai commit docs-only trong lượt này có thể đưa branch HEAD lên SHA khác; phải xác minh Actions đúng SHA sau commit. CI cũ không chứng nhận HEAD mới cho đến khi chạy.
+- **Không đổi:** main, TTX, Google Billing, thu cước khách, signed release, Google API key và logic fare.
