@@ -216,6 +216,57 @@ void main() {
     }
   });
 
+  test('begin() refuses orphaned route evidence instead of deleting it',
+      () async {
+    final orphan = {
+      'sequence': 0,
+      'latitude': 21.0,
+      'longitude': 105.8,
+      'recorded_at': start.toIso8601String(),
+      'accuracy_meters': 5.0,
+      'speed_kmh': 25.0,
+      'segment': 0,
+    };
+    await raw.insert('active_trip_route', orphan);
+    final before = await raw.query('active_trip_route');
+    await expectLater(begin(), throwsStateError);
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.hasSession, false);
+    expect(await raw.query('active_trip'), isEmpty);
+    expect(await raw.query('active_trip_route'), before);
+    expect(await repository.loadActive(), isNull);
+  });
+
+  test('initial route timestamp and segment cannot contradict snapshot',
+      () async {
+    final engine = TaximeterEngine(tariff: testTariff().tariff)
+      ..start(at: start);
+    expect(engine.acceptGps(fix(0).fix), true);
+    final snapshot = TripSessionSnapshot.fromEngine(engine);
+    for (final invalid in [
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8,
+        recordedAt: start.subtract(const Duration(seconds: 13)),
+        accuracyMeters: 5, speedKmh: 25,
+      ),
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8,
+        recordedAt: start.add(const Duration(seconds: 1)),
+        accuracyMeters: 5, speedKmh: 25,
+      ),
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8, recordedAt: start,
+        accuracyMeters: 5, speedKmh: 25, segment: 1,
+      ),
+    ]) {
+      await expectLater(repository.beginActiveWithInitialFix(
+        snapshot: snapshot, initialPoint: invalid,
+      ), throwsFormatException);
+      expect(await raw.query('active_trip'), isEmpty);
+      expect(await raw.query('active_trip_route'), isEmpty);
+    }
+  });
+
   test('accept() never publishes staged distance while SQLite is pending',
       () async {
     await begin();
