@@ -1,3 +1,15 @@
+# BÀN GIAO BẮT BUỘC — LƯỢT 7/7, CHU KỲ TIẾP QUẢN MỚI (16/11/2026)
+
+- **AI_REPLY_COUNT = 7** sau lượt bàn giao này. Trong chat đang mở lần bàn giao sau ở 14/7; chat mới đặt count = 0. Handoff full **3.1–3.10** + nguyên văn quy tắc điện thoại mục 9 tại `docs/HANDOFF_2026-11-16_CYCLE3_7-7.md`.
+- Code HEAD **trước commit tài liệu**: `edee0b7e2651f96983b0e3624243fd3e557d637e` trên **feature/navitaximeter-foundation**. Foundation Flutter Android run [43738096495](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43738096495) **FULL SUCCESS** (build-test, flutter analyze/test, Android 14 **headless debug SQLite probe**); Zero Cost run [43738096483](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43738096483) **SUCCESS**. CI trên SHA **docs-only** mới sau commit bàn giao phải kiểm tra riêng, không gán kết quả code cũ.
+- PR #1 OPEN/DRAFT/unmerged; main SHA `539ff788b62be69135e5b3ad2c554dca005249a5`, TTX reference branch SHA `a40c246de6fd3799aaddedce3ed0d3b1d9dd524d` READ-ONLY; issue #3 OPEN, issue #2 OPEN/NOT TESTED PHYSICAL.
+- Chu kỳ 1–6 đã làm: typed IPC 11 tests; v3 Python clone/prefs backup/v4 dry-run 10; Flutter FFI v4 ACK clone 14; IPC->sqflite test bridge 7; `TaximeterEngine.forkForCheckpoint` + test-only staging trên TripRepository v3 10; fare grace/flat/tier/rounding thêm 15 tests. SHA cuối `edee0b7e` CI xanh toàn bộ. **Các proof vẫn tách biệt**, chưa có một production trip writer/GNSS owner/ACK integrated.
+- **Điểm tiếp tục issue #3:** thử **unified test-only** typed IPC + staged immutable Dart fare candidate + sqflite transaction (route/header/fence/ACK) trên MỘT disposable DB clone; test replay/generation/rollback/lost ACK/PAUSED; sau đó mới review `MeteredTripCoordinator.accept/resume/_suspend/finish` để không mutate trước COMMIT. Không auto-migrate app DB v3, không thu cước thật.
+- Hard rule §9: Nếu cần thử trên điện thoại, hướng dẫn rõ APK/SHA, ca test, từng bước/nút, PASS/FAIL/NOT TESTED, ảnh/video/log cần chụp che riêng tư và cách gửi AI. Chưa có physical Android PASS và chưa yêu cầu người dùng test ở lượt này.
+- Không merge main, không sửa TTX, không Google Billing/paid APIs, không GPS/route/fare thật, không signed release.
+
+---
+
 # CHU KỲ MỚI — LƯỢT 6/7 (15/11/2026) · ISSUE #3 P4B
 
 - AI_REPLY_COUNT = 6 sau lượt này. **LƯỢT AI KẾ TIẾP = 7/7: BẮT BUỘC lập bản bàn giao đầy đủ, độc lập, theo mục 3.1–3.10, có link SHA/CI/hard rules.**
