@@ -1,25 +1,21 @@
 // Issue #3 P1 unified TEST-ONLY proof. This file is under test/support only.
 // No Android IPC, genuine GNSS, customer fare, production DB or v4 migration.
 import 'dart:convert';
+import 'dart:io';
+import 'package:path/path.dart' as path;
 
-import 'package:crypto/crypto.dart';
 import 'package:navitaximeter/src/core/taximeter_engine.dart';
 import 'package:navitaximeter/src/data/trip_session_snapshot.dart';
 import 'package:navitaximeter/src/data/tariff_codec.dart';
 import 'package:navitaximeter/src/lab/trip_ipc_contract.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'issue3_historical_ack_chain.dart';
 import 'issue3_sqflite_clone_writer.dart';
 import 'issue3_staged_fare_checkpoint.dart';
 
 enum UnifiedFailAt {
   none, beforeRoute, afterRoute, afterHeader, afterFence, afterLedger,
-}
-
-/// Bind a synthetic sample digest to the exact committed header bytes.
-String unifiedTestCheckpointId(String sampleDigest, String headerText) {
-  final headerDigest = sha256.convert(utf8.encode(headerText)).toString();
-  return sha256.convert(utf8.encode('$sampleDigest:$headerDigest')).toString();
 }
 
 /// One queued IPC gate, one Dart meter owner and one sqflite connection on a
@@ -61,6 +57,17 @@ class UnifiedTestOnlyWorker {
     Future<void> Function()? beforeWrite,
     Future<void> Function()? afterCommit,
   }) async {
+    // Test-only boundary: refuse any path outside the disposable clone
+    // directory, particularly the app's real navitaximeter_v1.db.
+    final folder = path.dirname(db.path);
+    if (path.basename(db.path) != v4FixtureName ||
+        !path.basename(folder).startsWith('navi-sqflite-appclone-') ||
+        path.dirname(folder) != Directory.systemTemp.path ||
+        !Directory(folder).existsSync() ||
+        FileSystemEntity.isLinkSync(folder) ||
+        FileSystemEntity.isLinkSync(db.path)) {
+      throw StateError('Refusing non-disposable unified test database');
+    }
     final engine = TaximeterEngine(tariff: syntheticStageTariff)
       ..start(at: at);
     final frozen = Map<String, CloneFix>.unmodifiable({
@@ -77,6 +84,7 @@ class UnifiedTestOnlyWorker {
           f['phase'] != 'TEST_ACTIVE' || n != 0) {
         throw StateError('Refusing nonempty or foreign disposable clone');
       }
+      await createUnifiedHistoryTable(txn); // Extra TEST-ONLY table on clone.
       final base = jsonDecode(TripSessionSnapshot.fromEngine(engine)
           .encodeSqliteHeader(routeCount: 0)) as Map<String, dynamic>;
       base['tariffHash'] = frozenTestTariffHash;
@@ -177,6 +185,10 @@ class UnifiedTestOnlyWorker {
             throw StateError('Durable route/ACK journal gap');
           }
         }
+        final priorHistoryId = await verifyUnifiedHistory(
+          txn: txn, routes: rows, acks: acks, finalHeader: oldText,
+          lastSequence: last, lastGnssNanos: lastNanos,
+        );
 
         if (_failAt == UnifiedFailAt.beforeRoute) {
           throw StateError('Injected before route');
@@ -209,6 +221,16 @@ class UnifiedTestOnlyWorker {
           'sequence': p.sequence,
           'sample_digest': p.payloadHash,
           'checkpoint_id': id,
+        }, conflictAlgorithm: ConflictAlgorithm.abort);
+        await txn.insert('unified_checkpoint_history_test_only', {
+          'sequence': p.sequence,
+          'session_id': p.fence.sessionId,
+          'generation': p.fence.generation,
+          'gnss_nanos': fix.gnssNanos,
+          'recorded_at': gps.timestamp.toIso8601String(),
+          'header_text': nextHeader,
+          'prior_history_id': priorHistoryId,
+          'history_id': unifiedHistoryLink(priorHistoryId, id),
         }, conflictAlgorithm: ConflictAlgorithm.abort);
         if (_failAt == UnifiedFailAt.afterLedger) {
           throw StateError('Injected after ledger');
@@ -307,6 +329,13 @@ class UnifiedTestOnlyWorker {
             throw StateError('Last fare/route/ACK digest mismatch');
           }
         }
+        // A hash of only the final row misses prior GPS changes. Recheck
+        // EVERY synthetic historical route, fare snapshot and chained ACK.
+        await verifyUnifiedHistory(
+          txn: txn, routes: routes, acks: acks,
+          finalHeader: text, lastSequence: last,
+          lastGnssNanos: f['last_gnss_nanos'] as int,
+        );
         // Snapshot restoration always creates PAUSED/interrupted state,
         // independently of the persisted pre-crash running meter.
         final restored = snapshot.restore(at: DateTime.utc(2026, 11, 16));
