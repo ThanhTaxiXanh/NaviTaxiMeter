@@ -240,6 +240,10 @@ class _GpsLabPageState extends State<GpsLabPage>
           at: DateTime.now(), foregroundStreamActive: false);
       }
     });
+    if (_session.storageFaulted || _session.status == MeterStatus.running) {
+      // Keep the exclusive lease on uncertain SQLite suspension.
+      throw StateError('Checkpoint GPS chưa an toàn; khóa owner vẫn giữ');
+    }
     final lease = _lease;
     if (lease != null) {
       await lease.release();

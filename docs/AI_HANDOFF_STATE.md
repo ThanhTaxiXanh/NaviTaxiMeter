@@ -1,3 +1,39 @@
+# CẬP NHẬT TIẾP QUẢN (15/11/2026, chu kỳ trả lời mới)
+
+**Thứ tự ưu tiên:** Phần này cập nhật trạng thái so với bản bàn giao 7/7
+lưu bên dưới; không xóa/ghi đè lịch sử kiến trúc hoặc ràng buộc.
+
+- **AI_REPLY_COUNT:** đặt về 0 khi nhận bàn giao, và **1/7 sau khi
+  hoàn thành lượt trả lời này**; chu kỳ bàn giao hiện tại là thứ 2,
+  kỳ bàn giao đầy đủ tiếp theo ở lượt thứ 7 của cuộc trò chuyện mới.
+- **Trạng thái nhánh:** `feature/navitaximeter-foundation`, PR #1 Draft/open
+  chưa merge. `main` vẫn `539ff788b62be69135e5b3ad2c554dca005249a5`.
+- **Đã làm:** một khóa owner Android `LocationOwnerRegistry` có token
+  độc quyền giữa Geolocator Preview, Geolocator Lab và Kotlin safety FGS;
+  live startup ACK + heartbeat monotonic; lớp Dart lease, test và tài
+  liệu `docs/GPS_SINGLE_OWNER_INTERLOCK.md`.
+- **Commit đã qua CI:** `f1764964ebc563deb8e2abfb3a4895601d98d292`.
+  Foundation Flutter Android run **43708626667 SUCCESS**, Zero Cost Gate
+  run **43708623657 SUCCESS**. Chỉ là kiểm thử tự động/Debug APK,
+  **chưa có thử máy Android thật**.
+- **Bổ sung sau CI:** tăng an toàn khi SQLite suspend lỗi và khi service
+  status đọc lỗi; các sửa đổi bổ sung cần **CI riêng ở commit mới**.
+- **Điểm tiếp tục:** xác minh CI của HEAD mới nhất; chạy các ca đối kháng
+  Preview → Safety, Lab → Safety, Safety → Geolocator, Home/lock/notification
+  stop, permission revoke, kill/reboot/Doze/OEM. Chưa chứng minh
+  reliability thực tế của khóa trên máy Android.
+- **Kiến trúc đích chưa triển khai:** một Kotlin TripLocationService thực
+  làm nguồn GNSS duy nhất, ACK checkpoint SQLite sau giao dịch, chống
+  duplicate với sessionId/sequence, recovery PAUSED và manual resume.
+  Tầng tính cước Dart hiện tại không thể mặc nhiên được dùng chạy nền.
+- **Không thay đổi:** Zero Paid API (0 USD), không Google Billing/key,
+  không sửa TTX-AATaximeter, không merge main, không release có thu cước,
+  không giả lập vị trí/đường đi/hóa đơn/QR; giữ 7 PNG, màu dark navy/cyan,
+  chính sách bản đồ và tên Biển Đông/Hoàng Sa/Trường Sa theo yêu cầu,
+  bảo mật SQLite và dữ liệu cá nhân.
+
+---
+
 # BẢN BÀN GIAO DỰ ÁN — NAVITAXIMETER
 
 **Loại:** BÀN GIAO BẮT BUỘC — LƯỢT 7/7  

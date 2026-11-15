@@ -39,3 +39,36 @@ token; không có chồng lấn FGS hay hóa đơn giả. Ghi log và phân lo�
 Kiểm thử nguồn Python, Dart, build Kotlin và manifest CI chỉ là bằng
 chứng tự động; phải chờ kết quả GitHub Actions cho commit chứa thay đổi.
 Không kết luận thử máy thật đã đạt hay ứng dụng đủ điều kiện thu cước.
+
+
+## Thiết kế đích: chỉ MỘT service sở hữu GNSS và chuyến (CHƯA LẬP TRÌNH)
+
+Khi qua kiểm thử thiết bị, chuyển từ ba owner thử nghiệm sang một
+`TripLocationService` Kotlin duy nhất để quản lý vòng đời và nguồn GNSS
+thực. Các trang Flutter sẽ là **client** xem trạng thái/điểm thử, không
+tự mở thêm Geolocator foreground service. Mỗi phiên chạy có `sessionId`,
+`generation` và fencing token; restart phải tạo phiên mới, không dùng
+lease cũ để nối quãng đường.
+
+Giao thức chuyển trạng thái dự kiến:
+`IDLE → START_REQUESTED → SERVICE_ACKED → GPS_ACQUIRING → ACTIVE`,
+và bất cứ lỗi nào ở quyền, service, tín hiệu hoặc SQLite sẽ chuyển sang
+`SUSPENDED`; chỉ tài xế xác nhận thủ công mới được `RESUME`. Không
+tự tạo phí trong khoảng mất tín hiệu. Lệnh start chỉ hợp lệ khi Activity
+đang hiển thị và đủ quyền Android.
+
+Mỗi quan sát GNSS được gán số thứ tự tăng và thời gian đơn điệu để lọc
+lặp/stale/jump/mock. Domain `TaximeterEngine` Dart vẫn là nguồn quy tắc
+tính cước đã kiểm thử, nhưng **chưa có runtime nền đáng tin cậy** cho nó:
+không được dựa vào Flutter UI isolate tiếp tục sống sau Home/kill.
+Trước khi bật trip thực, phải chứng minh một worker tồn tại dưới FGS,
+ghi `active_trip` và `active_trip_route` trong **cùng giao dịch SQLite**,
+rồi mới trả ACK checkpoint theo `sessionId + sequence + DB commit`.
+Nếu worker/ACK chết, dừng ghi tiền và khôi phục `PAUSED` sau restart.
+Không tính lại quãng đường đã thiếu fix, không ghi hóa đơn trùng.
+
+**Cổng chặn phát hành:** chỉ tiếp tục sau khi có Kotlin runtime tests,
+integration/instrumented tests, Android thực 11–16, crash/reboot/Doze/
+permission/OEM/SQLite fault, đối chiếu đo quãng đường và số tiền thực,
+và phê duyệt riêng của chủ dự án. Tuyệt đối không chuyển health monitor
+hiện tại thành nguồn tính cước bằng cách nối trực tiếp số mẫu GPS.

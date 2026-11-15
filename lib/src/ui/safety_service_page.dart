@@ -108,8 +108,11 @@ class _SafetyServicePageState extends State<SafetyServicePage>
             : 'Dịch vụ đã dừng';
       });
     } catch (error) {
-      if (mounted) setState(
-          () => _message = 'Không đọc được dịch vụ: ' + error.toString());
+      if (mounted) setState(() {
+        // A failed health read must never leave an old live ACK on screen.
+        _status = null;
+        _message = 'Không đọc được dịch vụ: ' + error.toString();
+      });
     }
   }
 
