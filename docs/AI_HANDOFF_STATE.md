@@ -1,3 +1,17 @@
+# TIẾP QUẢN CHAT HIỆN TẠI: BÀN GIAO BẮT BUỘC 7/7, NGÀY 16/11/2026
+
+- **Đã hoàn thành lượt bàn giao thứ 7/7 trong chat hiện tại.** `AI_REPLY_COUNT=7`. Nếu tiếp tục cùng chat: 8/7 về chu kỳ và bàn giao ở 14/21...; **chat mới reset 0**, bàn giao ở lượt 7 tiếp theo.
+- **TÀI LIỆU ĐẦY ĐỦ BẮT BUỘC ĐỌC:** `docs/HANDOFF_2026-11-16_CYCLE4_7-7.md` gồm 3.1–3.10 và **Phụ lục A chép nguyên văn quy tắc kiểm thử điện thoại**, Phụ lục B trạng thái không đủ điều kiện phone test. Quy tắc nguồn: `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`. Liên kết: https://github.com/ThanhTaxiXanh/NaviTaxiMeter/blob/feature/navitaximeter-foundation/docs/HANDOFF_2026-11-16_CYCLE4_7-7.md .
+- **SHA CODE/CI được đối chiếu tại lượt 7 trước khi commit docs:** `55c1c62f9b8b938df34f312a350b7474a4dd073d`. Foundation https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43758959240 **FULL SUCCESS** (build-test + Android14 emulator HEADLESS DEBUG ONLY, NOT physical GPS). ZeroCost Source Gate https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43758959319 **SUCCESS**, không phải audit chi phí 30 ngày.
+- Bản bàn giao độc lập được tạo ở commit `28b6009524aac75504aa8292e1aac8a4b7c2aeb6`. **HEAD sẽ đổi sau khi cập nhật STATE này, cần đọc CI theo latest SHA; không gán PASS của code SHA cho docs SHA trước khi hoàn tất.**
+- PR #1 **OPEN/DRAFT**, Issue #2 **OPEN / NOT TESTED PHYSICAL**, Issue #3 **OPEN / no one native GNSS owner + one production SQLite writer or true post-COMMIT ACK**. `main` `539ff788b62be69135e5b3ad2c554dca005249a5`; TTX reference feature SHA `a40c246de6fd3799aaddedce3ed0d3b1d9dd524d`. Không sửa/merge main/TTX.
+- CHÍNH XÁC công việc đã làm trong chat mới 1–6: unified test-only staged fare/route/fence/ACK and historical chain, coordinator COW và atomic initial v3 trip, Dart-only typed-wire readback ACK tests trên SQLite clone. CI baseline ở SHA code `55c1c62` FULL SUCCESS. **KHÔNG native Kotlin→Dart actual trip IPC/worker, không real FGS GNSS proof, không physical device.**
+- **Bước đầu chat mới:** đọc handoff full, kiểm HEAD/PR/issues/CI live; ưu tiên Issue #3 test-only/native debug actual Kotlin→Dart transport/service-owned single writer + backup v3 clone fence; **không mở feature/thu cước khách**. Phone testing chỉ khi có APK artifact + SHA/checksum + nút từng bước và Phụ lục A; hiện CHƯA THỂ TEST.
+- Giữ Android-first Flutter/Kotlin, Zero Paid API, v3 app DB và confirmed prefs, 7 mockups user attachments, map sovereignty display requirements, no Google Billing/paid APIs/Google paid Maps, no signed release, no actual passengers.
+- Quy tắc bắt buộc: bài test PASS không đồng nghĩa production readiness; nêu rõ PENDING/NOT TESTED; không gửi GPS/PII/keystore/token.
+
+---
+
 # TIẾP QUẢN CHAT HIỆN TẠI - LƯỢT 6/7 (16/11/2026 ICT)
 
 - Sau lượt trả lời này: **AI_REPLY_COUNT = 6/7**. LƯỢT AI TIẾP THEO = 7/7: PHẢI lập bản bàn giao mới đầy đủ 3.1–3.10 + phụ lục quy trình kiểm thử điện thoại, độc lập, đọc/kiểm lại repo/PR/issues/CI đúng SHA, không bắt đầu feature mới trước bàn giao.
