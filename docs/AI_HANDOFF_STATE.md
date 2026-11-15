@@ -1,3 +1,15 @@
+# TIẾP QUẢN SAU BÀN GIAO 16/11/2026 - LƯỢT 2/7 (CHAT MỚI)
+
+- Trong chat tiếp quản hiện tại: AI_REPLY_COUNT=2 sau lượt này; lượt thứ 7 tạo BẢN BÀN GIAO ĐẦY ĐỦ 3.1-3.10 + Phụ lục A, không tự đếm tiếp từ chat cũ.
+- Branch được phép: feature/navitaximeter-foundation. PR #1 vẫn Draft/unmerged; main/TTX reference không chỉnh; issue #2 OPEN/NOT TESTED physical, issue #3 OPEN.
+- Lượt 1: test/support/issue3_unified_checkpoint_writer.dart và test/issue3_unified_checkpoint_test.dart tạo one test-only sqflite transaction chứa real Dart staged fare/route/fence/ACK, không có GNSS thật, Android IPC hoặc production DB. Code SHA c5b8678d694c250e91b50651e15e9df185f4ccea: Foundation run 43741664068 SUCCESS (flutter analyze/test + Android14 headless DEBUG SQLite probe), Zero Cost run 43741664065 SUCCESS.
+- Lượt 2: nhận CI pass SHA c5b; bổ sung recovery-check digest của last sample + last header/fare + ACK ID, xác minh frozen tariff, chống tamper route/fence/ledger/money và 7 ca thử tương ứng; commits 4b2a4c6, 373b38c2. Tài liệu docs/ISSUE_3_UNIFIED_TEST_ONLY_CHECKPOINT_PROOF.md được tạo. **CI của HEAD cuối cùng sau docs phải kiểm tra riêng trước khi công nhận PASS**.
+- Giới hạn: chưa chứng minh historical hash chain toàn bộ các hàng, recovery chỉ đối chiếu checkpoint cuối cùng bằng digest + header; chưa có Android native live GNSS owner, one production SQLite writer, real post-COMMIT ACK và physical device. Vẫn chưa thu cước khách hoặc phát hành.
+- Bước kế tiếp: xác minh latest HEAD Foundation/Zero Cost, sửa Flutter test nếu FAIL; sau đó tăng tính toàn vẹn full-history/ACK and review coordinator mutation trước COMMIT; vẫn chỉ TEST ONLY. Quy tắc mục 9 bắt buộc hướng dẫn điện thoại chi tiết + cách gửi bằng chứng khi yêu cầu test; hiện chưa yêu cầu test.
+- Cấm merge main, sửa TTX, paid API/Billing, auto-migrate DB thật, signed release hoặc thương mại.
+
+---
+
 # BÀN GIAO BẮT BUỘC — LƯỢT 7/7, CHU KỲ TIẾP QUẢN MỚI (16/11/2026)
 
 - **AI_REPLY_COUNT = 7** sau lượt bàn giao này. Trong chat đang mở lần bàn giao sau ở 14/7; chat mới đặt count = 0. Handoff full **3.1–3.10** + nguyên văn quy tắc điện thoại mục 9 tại `docs/HANDOFF_2026-11-16_CYCLE3_7-7.md`.
