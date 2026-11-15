@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../core/lab_session_safety.dart';
 import '../core/location_owner_gate.dart';
+import '../core/serialized_gps_stop.dart';
 import '../core/metered_trip_coordinator.dart';
 import '../core/taximeter_engine.dart';
 import '../data/trip_repository.dart';
@@ -32,6 +33,7 @@ class _GpsLabPageState extends State<GpsLabPage>
       MeteredTripCoordinator(repository: _repository);
 
   Future<void> _operations = Future<void>.value();
+  final SerializedGpsStop _stopGate = SerializedGpsStop();
   StreamSubscription<Position>? _stream;
   LocationOwnerLease? _lease;
   Timer? _watchdog;
@@ -105,7 +107,11 @@ class _GpsLabPageState extends State<GpsLabPage>
     if (state != AppLifecycleState.resumed) {
       _activityVisible = false;
       // Conservative policy: do not bill when the activity becomes invisible.
-      unawaited(_stopGps());
+      unawaited(_stopGps().catchError((Object error, StackTrace _) {
+        if (mounted && !_closing) {
+          setState(() => _message = 'Dừng GPS không an toàn: $error');
+        }
+      }));
     } else {
       _activityVisible = true;
       if (mounted && !_closing) {
@@ -115,7 +121,8 @@ class _GpsLabPageState extends State<GpsLabPage>
   }
 
   Future<void> _startGps() async {
-    if (_closing || _tracking || _startingGps || !_ready) return;
+    if (_closing || _tracking || _startingGps || _stopGate.stopping ||
+        _lease != null || !_ready) return;
     setState(() {
       _startingGps = true;
       _message = 'Đang kiểm tra vị trí và quyền của Android...';
@@ -157,7 +164,11 @@ class _GpsLabPageState extends State<GpsLabPage>
         if (mounted && !_closing) {
           setState(() => _message = 'Luồng vị trí lỗi: $error');
         }
-        unawaited(_stopGps());
+        unawaited(_stopGps().catchError((Object error, StackTrace _) {
+          if (mounted && !_closing) {
+            setState(() => _message = 'Dừng GPS không an toàn: $error');
+          }
+        }));
       });
       _watchdog = Timer.periodic(const Duration(seconds: 3), (_) {
         if (!_tracking || !_activityVisible || _closing) return;
@@ -227,7 +238,9 @@ class _GpsLabPageState extends State<GpsLabPage>
     }));
   }
 
-  Future<void> _stopGps() async {
+  Future<void> _stopGps() => _stopGate.run(_stopOwnedStream);
+
+  Future<void> _stopOwnedStream() async {
     final current = _stream;
     _stream = null;
     _watchdog?.cancel();
@@ -251,6 +264,16 @@ class _GpsLabPageState extends State<GpsLabPage>
     }
     if (mounted && !_closing) {
       setState(() => _message = 'GPS đã dừng; phiên thử đã được tạm ngắt.');
+    }
+  }
+
+  Future<void> _stopGpsFromButton() async {
+    try {
+      await _stopGps();
+    } catch (error) {
+      if (mounted && !_closing) {
+        setState(() => _message = 'Khóa GPS chưa thể giải phóng: $error');
+      }
     }
   }
 
@@ -417,8 +440,9 @@ class _GpsLabPageState extends State<GpsLabPage>
         ],
         const SizedBox(height: 22),
         FilledButton.icon(
-          onPressed: _busy || _startingGps || !_ready ? null :
-              (_tracking ? _stopGps : _startGps),
+          onPressed: _busy || _startingGps || _stopGate.stopping ||
+              !_ready ? null :
+              (_tracking || _lease != null ? _stopGpsFromButton : _startGps),
           icon: Icon(_tracking ? Icons.stop : Icons.gps_fixed),
           label: Text(_tracking ? 'Dừng GPS thử' : 'Bật GPS thử'),
         ),

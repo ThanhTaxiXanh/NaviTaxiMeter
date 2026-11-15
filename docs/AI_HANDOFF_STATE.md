@@ -1,3 +1,26 @@
+## CẬP NHẬT CHU KỲ HIỆN TẠI: LƯỢT 2/7 (15/11/2026)
+
+- **Bộ đếm:** AI_REPLY_COUNT = 2 sau lượt trả lời tiếp tục này;
+  kỳ bàn giao tiếp theo khi đạt 7/7 (còn 5 lượt).
+- **Phạm vi:** Chỉ chỉnh sửa nhánh `feature/navitaximeter-foundation`.
+  Không merge `main`, không sửa repo TTX, không bật Google Billing,
+  không mở tính cước thật.
+- **Việc bổ sung:** gộp các yêu cầu dừng Geolocator đồng thời bằng
+  `SerializedGpsStop`; bổ sung Dart tests dừng/release đúng thứ tự;
+  bổ sung **Kotlin JUnit runtime tests** và CI
+  `./gradlew :app:testDebugUnitTest --no-daemon`, patch Gradle
+  idempotent trong bootstrap Android.
+- **Rủi ro chưa giải quyết:** Kotlin test chỉ xác minh mutex trong
+  tiến trình; chưa chứng nhận Geolocator FGS dừng hết trước khi Android
+  release lease. Cần đo trên điện thoại Android thật.
+- **Bước chính xác sau:** kiểm tra workflow CI mới và sửa lỗi nếu có;
+  nếu PASS thì cập nhật SHA/Actions. Sau đó instrumented Android tests,
+  phân tích tính đúng đắn ACK/heartbeat của service và mô hình
+  một `TripLocationService` với SQLite checkpoint.
+- **Bản bàn giao chu kỳ trước giữ nguyên ở dưới.**
+
+---
+
 # CẬP NHẬT TIẾP QUẢN (15/11/2026, chu kỳ trả lời mới)
 
 **Thứ tự ưu tiên:** Phần này cập nhật trạng thái so với bản bàn giao 7/7

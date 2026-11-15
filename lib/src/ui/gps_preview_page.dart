@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../core/location_tracking_policy.dart';
 import '../core/location_owner_gate.dart';
+import '../core/serialized_gps_stop.dart';
 
 /// Preview-only validation. It never feeds a fare engine or stores coordinates.
 abstract final class PreviewGpsQuality {
@@ -38,6 +39,7 @@ class GpsPreviewPage extends StatefulWidget {
 class _GpsPreviewPageState extends State<GpsPreviewPage>
     with WidgetsBindingObserver {
   final LocationTrackingPolicy _policy = LocationTrackingPolicy();
+  final SerializedGpsStop _stopGate = SerializedGpsStop();
   LocationOwnerLease? _lease;
   bool _visible = true;
   StreamSubscription<Position>? _subscription;
@@ -58,11 +60,16 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _visible = state == AppLifecycleState.resumed;
-    if (!_visible) unawaited(_stop());
+    if (!_visible) {
+      unawaited(_stop().catchError((Object error, StackTrace _) {
+        if (mounted) setState(() => _state = 'Không thể dừng GPS: $error');
+      }));
+    }
   }
 
   Future<void> _start() async {
-    if (_tracking || _starting || !_visible) return;
+    if (_tracking || _starting || _stopGate.stopping ||
+        _lease != null || !_visible) return;
     setState(() { _starting = true; _state = 'Đang kiểm tra quyền GPS...'; });
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
@@ -103,7 +110,9 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
         if (mounted) {
           setState(() => _state = 'GPS lỗi: $error');
         }
-        _stop();
+        unawaited(_stop().catchError((Object error, StackTrace _) {
+          if (mounted) setState(() => _state = 'Không thể dừng GPS: $error');
+        }));
       });
       _watchdog = Timer.periodic(const Duration(seconds: 3), (_) {
         if (!mounted || _subscription == null) return;
@@ -120,6 +129,14 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
       await _stop();
     } finally {
       if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  Future<void> _stopFromButton() async {
+    try {
+      await _stop();
+    } catch (error) {
+      if (mounted) setState(() => _state = 'Khóa GPS chưa được trả: $error');
     }
   }
 
@@ -147,7 +164,9 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
     });
   }
 
-  Future<void> _stop() async {
+  Future<void> _stop() => _stopGate.run(_stopOwnedStream);
+
+  Future<void> _stopOwnedStream() async {
     final existing = _subscription;
     _subscription = null;
     _watchdog?.cancel();
@@ -171,7 +190,9 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_stop());
+    unawaited(_stop().catchError((Object _, StackTrace __) {
+      // Retain Android lease if teardown fails; never silently transfer GPS.
+    }));
     super.dispose();
   }
 
@@ -204,7 +225,8 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
         ],
         const SizedBox(height: 24),
         FilledButton.icon(
-          onPressed: _starting ? null : (_tracking ? _stop : _start),
+          onPressed: _starting || _stopGate.stopping ? null :
+              (_tracking || _lease != null ? _stopFromButton : _start),
           icon: Icon(_tracking ? Icons.stop : Icons.gps_fixed),
           label: Text(_tracking ? 'Dừng GPS thử' : 'Bắt đầu xem GPS'),
         ),

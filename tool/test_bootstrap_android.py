@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from bootstrap_android import patch_manifest, PERMISSIONS
+from bootstrap_android import patch_manifest, patch_gradle, PERMISSIONS, UNIT_TEST_DEP
 
 SAMPLE = """<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <application android:label="navitaximeter" android:name="generated">
@@ -32,6 +32,21 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('LocationOwnerRegistry.matches("native_safety"', service)
         self.assertIn('"acknowledged" to acknowledged', service)
         self.assertIn('LocationOwnerRegistry.release("native_safety"', service)
+
+    def test_gradle_unit_test_patch_idempotent(self):
+        source = 'plugins { id("com.android.application") }\n'
+        first = patch_gradle(source)
+        self.assertIn(UNIT_TEST_DEP, first)
+        self.assertEqual(first, patch_gradle(first))
+        with self.assertRaises(ValueError):
+            patch_gradle("android { }")
+
+    def test_native_jvm_tests_in_source(self):
+        root = Path(__file__).resolve().parents[1] / "android_native"
+        test_source = (root / "LocationOwnerRegistryTest.kt").read_text()
+        self.assertIn("class LocationOwnerRegistryTest", test_source)
+        self.assertIn("fun concurrentClaimAllowsExactlyOneOwner", test_source)
+        self.assertIn("fun staleReleaseNeverClearsNewOwner", test_source)
 
     def test_idempotent(self):
         first = patch_manifest(SAMPLE)

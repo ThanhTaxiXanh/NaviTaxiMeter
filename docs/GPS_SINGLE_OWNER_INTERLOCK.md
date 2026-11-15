@@ -72,3 +72,24 @@ integration/instrumented tests, Android thực 11–16, crash/reboot/Doze/
 permission/OEM/SQLite fault, đối chiếu đo quãng đường và số tiền thực,
 và phê duyệt riêng của chủ dự án. Tuyệt đối không chuyển health monitor
 hiện tại thành nguồn tính cước bằng cách nối trực tiếp số mẫu GPS.
+
+## Bổ sung kiểm thử tranh chấp, chu kỳ tiếp nhận 2/7 (15/11/2026)
+
+Trong Dart, cả Preview và Lab dùng `SerializedGpsStop` để gộp các yêu cầu
+dừng đồng thời, không trả lease khi `StreamSubscription.cancel()` vẫn
+chưa hoàn tất. Lab còn phải checkpoint trạng thái PAUSED trước khi trả
+lease; lỗi SQLite tiếp tục giữ lease theo fail-closed. Kiểm thử Dart
+dùng luồng hủy trì hoãn để thử điều kiện này, không mô phỏng GPS thật.
+
+Trong Kotlin, `LocationOwnerRegistryTest.kt` chạy bằng
+`:app:testDebugUnitTest` của Gradle; xác minh hai nguồn vị trí không
+cùng nhận lease, token stale không trả lease mới, từ chối owner lạ và
+16 yêu cầu đồng thời chỉ một yêu cầu thành công. Bootstrap Android
+cài test vào Android skeleton được tạo từ Flutter, cùng dependency JUnit
+chỉ dùng kiểm thử. Test không yêu cầu Google key/Billing.
+
+**Giới hạn quan trọng:** Android registry đồng bộ và Dart stop barrier
+không chứng minh Geolocator *thực sự* giải phóng foreground service ngay
+khi Future cancel hoàn thành; chỉ thiết bị Android thật và quan sát
+FGS mới xác minh được cửa sổ giao thoa này. Các ca Home/lock,
+permission revoke, kill/reboot/Doze/OEM và chi phí vẫn chưa đo thực.
