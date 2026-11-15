@@ -13,6 +13,12 @@ class CompiledManifestTests(unittest.TestCase):
         permissions = '\n'.join(
             "uses-permission: name='" + name + "'" for name in REQUIRED)
         badging = "package: name='vn.navitaximeter' versionCode='4'"
+        service += (
+            'E: service (line=140)\n'
+            '  A: android:name(0x01010003)="vn.navitaximeter.LocationSafetyService"\n'
+            '  A: android:exported(0x01010010)=(type 0x12)0x00000000\n'
+            '  A: android:foregroundServiceType(0x01010599)=(type 0x11)0x00000008\n'
+        )
         return service, permissions, badging
 
     def test_aapt_cli_places_apk_before_xml_asset(self):
@@ -25,6 +31,16 @@ class CompiledManifestTests(unittest.TestCase):
 
     def test_correct_compiled_manifest(self):
         verify_texts(*self.fake())
+
+    def test_native_safety_service_nonexported_and_typed(self):
+        a, b, c = self.fake()
+        with self.assertRaises(ValueError):
+            verify_texts(a.replace("LocationSafetyService", "DifferentService"), b, c)
+        with self.assertRaises(ValueError):
+            verify_texts(a.replace(
+                'android:exported(0x01010010)=(type 0x12)0x00000000',
+                'android:exported(0x01010010)=(type 0x12)0xffffffff',
+            ), b, c)
 
     def test_missing_location_service_type_is_denied(self):
         a, b, c = self.fake()

@@ -37,6 +37,17 @@ def verify_texts(manifest, permissions, badging):
         re.IGNORECASE,
     ):
         raise ValueError("Geolocator foregroundServiceType=location missing")
+    native = manifest.find("LocationSafetyService")
+    if native < 0:
+        raise ValueError("Independent native location service missing in APK")
+    native_scope = manifest[native:native + 1600]
+    if not re.search(
+        r"foregroundServiceType[^\n]*(?:0x0*8\b|location)",
+        native_scope, re.IGNORECASE,
+    ):
+        raise ValueError("Native service lacks foregroundServiceType=location")
+    if not re.search(r"exported[^\n]*0x0+\b", native_scope):
+        raise ValueError("Native location service is exported")
     if "com.google.android.geo.API_KEY" in manifest or (
         "com.google.android.maps.v2.API_KEY" in manifest
     ):

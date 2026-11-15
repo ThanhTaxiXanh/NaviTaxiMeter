@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'src/ui/gps_lab_page.dart';
 import 'src/ui/gps_preview_page.dart';
 import 'src/ui/tariff_management_page.dart';
+import 'src/ui/safety_service_page.dart';
 
 void main() => runApp(const NaviTaxiMeterApp());
 
@@ -40,6 +41,7 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
       1 => const TariffManagementPage(),
       2 => const GpsPreviewPage(),
       3 => const GpsLabPage(),
+      4 => const SafetyServicePage(),
       _ => const SafeArea(child: Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: Column(
@@ -73,6 +75,7 @@ class _NaviFoundationHomeState extends State<NaviFoundationHome> {
         NavigationDestination(icon: Icon(Icons.price_change), label: 'Bảng giá'),
         NavigationDestination(icon: Icon(Icons.gps_fixed), label: 'GPS thử'),
         NavigationDestination(icon: Icon(Icons.science_outlined), label: 'Phòng thử'),
+        NavigationDestination(icon: Icon(Icons.security), label: 'GPS nền'),
       ],
     ),
   );
