@@ -23,10 +23,13 @@ import io.flutter.plugin.common.MethodChannel
 class HeadlessSqliteProbeService : Service() {
     companion object {
         const val CHANNEL = "vn.navitaximeter/headless_sqlite_probe"
+        @Volatile private var destroyedCount = 0L
+        fun destructionCount(): Long = destroyedCount
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val binder = ProbeBinder()
+    private val callbackFence = HeadlessProbeCallbackFence()
     @Volatile private var ready = false
     private var engine: FlutterEngine? = null
     private var channel: MethodChannel? = null
@@ -41,13 +44,39 @@ class HeadlessSqliteProbeService : Service() {
                     callback(null, "DART_WORKER_NOT_READY")
                     return@post
                 }
-                endpoint.invokeMethod("writeAndRead", null, object : MethodChannel.Result {
-                    override fun success(result: Any?) = callback(result, null)
-                    override fun error(code: String, message: String?, details: Any?) {
-                        callback(null, "$code: ${message ?: "unknown"}")
-                    }
-                    override fun notImplemented() = callback(null, "NOT_IMPLEMENTED")
-                })
+                // Register BEFORE dispatch. Any engine teardown fails pending
+                // requests; a late Dart callback can never report success.
+                val requestId = callbackFence.register(callback)
+                if (requestId == null) {
+                    callback(null, "SERVICE_DESTROYED")
+                    return@post
+                }
+                try {
+                    endpoint.invokeMethod("writeAndRead", null,
+                        object : MethodChannel.Result {
+                            override fun success(result: Any?) {
+                                mainHandler.post {
+                                    callbackFence.resolve(requestId, result, null)
+                                }
+                            }
+                            override fun error(
+                                code: String, message: String?, details: Any?
+                            ) {
+                                val description = code +
+                                    (if (message.isNullOrBlank()) "" else ": " + message)
+                                mainHandler.post {
+                                    callbackFence.resolve(requestId, null, description)
+                                }
+                            }
+                            override fun notImplemented() {
+                                mainHandler.post {
+                                    callbackFence.resolve(requestId, null, "NOT_IMPLEMENTED")
+                                }
+                            }
+                        })
+                } catch (_: RuntimeException) {
+                    callbackFence.resolve(requestId, null, "DART_CHANNEL_FAILED")
+                }
             }
         }
     }
@@ -56,6 +85,7 @@ class HeadlessSqliteProbeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        callbackFence.open()
         val loader = FlutterInjector.instance().flutterLoader()
         loader.startInitialization(applicationContext)
         loader.ensureInitializationComplete(applicationContext, null)
@@ -81,10 +111,12 @@ class HeadlessSqliteProbeService : Service() {
 
     override fun onDestroy() {
         ready = false
+        callbackFence.close()
         channel?.setMethodCallHandler(null)
         channel = null
         engine?.destroy()
         engine = null
+        destroyedCount += 1
         super.onDestroy()
     }
 }
