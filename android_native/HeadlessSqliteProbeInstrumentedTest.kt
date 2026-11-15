@@ -12,6 +12,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -67,6 +68,37 @@ class HeadlessSqliteProbeInstrumentedTest {
             assertEquals(true, response["reopened"])
             assertEquals(false, response["passengerFareEnabled"])
             assertEquals("navitaximeter_HEADLESS_PROBE_ONLY.db", response["databaseName"])
+
+            // Eight requests are sent before waiting for callbacks. Only the
+            // Dart service-owned probe writer may mutate this isolated DB.
+            // Verify unique consecutive persisted counters, not passenger ACKs.
+            val initial = (response["rowCount"] as? Number)?.toInt()
+                ?: throw AssertionError("Probe did not expose a row count")
+            val parallelDone = CountDownLatch(8)
+            val parallelCounts = Collections.synchronizedList(mutableListOf<Int>())
+            val parallelErrors = Collections.synchronizedList(mutableListOf<String>())
+            repeat(8) {
+                worker.writeAndRead { value, failure ->
+                    if (failure != null) {
+                        parallelErrors.add(failure)
+                    } else {
+                        val count = ((value as? Map<*, *>)?.get("rowCount")
+                            as? Number)?.toInt()
+                        if (count == null) {
+                            parallelErrors.add("Missing SQLite readback count")
+                        } else {
+                            parallelCounts.add(count)
+                        }
+                    }
+                    parallelDone.countDown()
+                }
+            }
+            assertTrue("Parallel SQLite probes timed out",
+                parallelDone.await(40, TimeUnit.SECONDS))
+            assertTrue("Probe requests failed: $parallelErrors",
+                parallelErrors.isEmpty())
+            assertEquals((initial + 1..initial + 8).toList(),
+                parallelCounts.sorted())
         } finally {
             context.unbindService(connection)
         }
