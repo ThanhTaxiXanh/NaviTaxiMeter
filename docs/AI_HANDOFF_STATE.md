@@ -1,3 +1,15 @@
+# TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 4/7 (15/11/2026)
+
+- AI_REPLY_COUNT = 4 sau lượt này; bàn giao bắt buộc đầy đủ ở lượt 7/7. Quy tắc §9 hướng dẫn kiểm thử điện thoại có trong `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`; **chưa** yêu cầu chủ dự án thử điện thoại.
+- HEAD trước thay đổi `f59a6eee46238774afc34d034451c33856a9c0f9`; PR #1 OPEN/DRAFT, chưa merge `main`; issue #2/#3 OPEN. Chỉ ghi nhánh `feature/navitaximeter-foundation`, TTX read-only.
+- CI của `f59a6eee`: `flutter analyze` và `flutter test` SUCCESS trên Foundation 43732189163, Zero Cost 43732189187 SUCCESS. Foundation build APK/emulator kết luận FULL phải kiểm tra khi hoàn thành.
+- Bổ sung `test/support/issue3_ipc_sqflite_adapter.dart` và `test/issue3_ipc_sqflite_bridge_test.dart`: bridge test-only IPC gate -> disposable sqflite clone writer. Thêm 7 Dart tests ghép 8 ordered, duplicate idempotency, digest mismatch, stale generation, conflict, ACK lost after COMMIT, reopen/PAUSED; chỉ fixture zero fare, synthetic. `docs/ISSUE_3_IPC_SQFLITE_BRIDGE_PROOF.md` ghi rõ giới hạn.
+- CI SHA sắp commit chưa xác minh. Không phải production IPC/GNSS/FGS, chưa real staged immutable meter candidate, không migrations app v3→v4, không Android physical test, không thu cước thật.
+- Tiếp theo: xác minh `flutter test` CI đúng SHA mới; sau đó test staged immutable fare engine candidate với failure-injection, Android test-only instrumented sqflite + single ownership; issue #2 cần hướng dẫn từng ca và bằng chứng theo hard-rule §9.
+- Giữ nguyên Zero Paid API, cấm Billing, cấm merge main/sửa TTX, cấm phát hành thương mại.
+
+---
+
 # TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 3/7 (15/11/2026)
 
 - AI_REPLY_COUNT = 3 sau lượt này; bàn giao bắt buộc tiếp theo ở lượt 7/7. Giữ nguyên HARD RULE §9: mọi yêu cầu thử trên điện thoại phải có bước thao tác, điều kiện PASS/FAIL, mẫu bằng chứng và cách gửi; chưa yêu cầu thử điện thoại tại lượt này.
