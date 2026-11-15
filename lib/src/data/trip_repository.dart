@@ -183,7 +183,7 @@ class TripRepository {
   }) async {
     final startedAt = snapshot.meter['startedAt']?.toString();
     if (startedAt == null || DateTime.tryParse(startedAt) == null ||
-        snapshot.meter['status'] != MeterStatus.running.name ||
+        snapshot.meter['status'] != 'running' ||
         snapshot.routePoints.isNotEmpty) {
       throw const FormatException('Invalid new-trip baseline snapshot');
     }
