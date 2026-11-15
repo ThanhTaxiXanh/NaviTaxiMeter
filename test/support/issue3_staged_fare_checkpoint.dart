@@ -41,6 +41,8 @@ class TestOnlyFareStage {
   static Future<TestOnlyFareStage> begin({
     required Directory sandbox,
     required DateTime at,
+    TariffConfig tariff = syntheticStageTariff,
+    double? fixedFare,
   }) async {
     final folder = path.basename(sandbox.path);
     if (path.dirname(sandbox.path) != Directory.systemTemp.path ||
@@ -51,7 +53,10 @@ class TestOnlyFareStage {
     final dbFile = File(path.join(sandbox.path, stageFixtureName));
     if (await dbFile.exists()) throw StateError('Refuse to reuse existing DB');
     final repository = TripRepository(databasePath: dbFile.path);
-    final meter = TaximeterEngine(tariff: syntheticStageTariff)..start(at: at);
+    // These tariff and fixed-fare overrides are accepted ONLY by this
+    // disposable test harness. Never load confirmed driver preferences here.
+    final meter = TaximeterEngine(tariff: tariff)
+      ..start(at: at, fixedFare: fixedFare);
     final firstFix = GpsFix(
       latitude: 0, longitude: 0, accuracyMeters: 1, speedKmh: 20,
       timestamp: at,

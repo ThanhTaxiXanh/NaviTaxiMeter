@@ -1,3 +1,15 @@
+# CHU KỲ MỚI — LƯỢT 6/7 (15/11/2026) · ISSUE #3 P4B
+
+- AI_REPLY_COUNT = 6 sau lượt này. **LƯỢT AI KẾ TIẾP = 7/7: BẮT BUỘC lập bản bàn giao đầy đủ, độc lập, theo mục 3.1–3.10, có link SHA/CI/hard rules.**
+- HEAD trước thay đổi: `3c1111e5985b9563f33b2ca44d80b7552d8880d6`; PR #1 OPEN/DRAFT, chưa merge; issue #2/#3 OPEN. Ghi duy nhất `feature/navitaximeter-foundation`; không sửa main/TTX.
+- CI SHA `3c1111e5`: [ZeroCost 43733816387](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43733816387) SUCCESS; [Foundation 43733816398](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43733816398) SUCCESS (build-test + emulator-probe); flutter test SUCCESS bao gồm 10 staged tests. Emulator là headless debug SQLite probe, KHÔNG GNSS thật.
+- Mới lượt 6: `test/issue3_fare_fork_pricing_regression_test.dart` (10 tests fork waiting grace/flat/tier/rounding/PAUSED), `test/issue3_staged_tariff_parity_test.dart` (5 real sqflite v3 disposable DB fare parity tests), và chỉnh **test-only** helper `TestOnlyFareStage.begin({TariffConfig tariff,double? fixedFare})`. `docs/ISSUE_3_P4B_FARE_PARITY_REGRESSION.md` nêu giới hạn. Tổng +15 test **đã viết, chờ CI SHA mới**.
+- `TaximeterEngine.forkForCheckpoint()` từ lượt 5 vẫn không được gọi ở production `MeteredTripCoordinator`; live coordinator vẫn mutate trước COMMIT. P3 typed IPC + clone ACK và P4 fare v3 actual repo vẫn tách biệt; chưa có single service-owned native GNSS/worker hoặc production durable ledger, không migrate v4.
+- Hard rule cập nhật đầy đủ `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`, mục 9 hướng dẫn kiểm thử điện thoại PASS/FAIL và gửi bằng chứng; **chưa yêu cầu user thử điện thoại**. Issue #2 Android physical chưa được chứng minh.
+- Bước kế tiếp: verify CI đúng SHA cuối lượt 6, nếu fail sửa; tiếp theo phối hợp transactional immutable fare + IPC+ACK trong worker thử nghiệm, guard production no billing; thiết kế/test issue #2 Android thực trước release. Giữ 0 USD paid API, không Google Billing, không merge main, không sửa TTX, không thu cước hành khách.
+
+---
+
 # TIẾP TỤC ISSUE #3 — CHU KỲ MỚI, LƯỢT 5/7 (15/11/2026)
 
 - AI_REPLY_COUNT = 5 sau lượt này; đến lượt 7 BẮT BUỘC bàn giao đầy đủ các mục 3.1–3.10. Hard Rule §9 hướng dẫn kiểm thử điện thoại đầy đủ vẫn lưu tại `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`; **chưa** yêu cầu user thử điện thoại.
