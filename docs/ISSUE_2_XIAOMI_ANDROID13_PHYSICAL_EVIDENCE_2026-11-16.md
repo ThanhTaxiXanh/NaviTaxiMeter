@@ -81,6 +81,24 @@
 
 **VẪN NOT TESTED:** thu hồi quyền Vị trí của ứng dụng trong Android Settings (khác với tắt provider hệ thống); giảm xuống approximate; tắt thông báo, process kill/force-stop, reboot, Doze dài, stale PendingIntent token, nhảy đồng hồ, Lab SQLite fault và cấu hình OEM khác. Không kết luận an toàn commercial từ video ~57 giây. **Issue #2 vẫn OPEN.**
 
+## 2E. A2-05b: video thu hồi quyền Vị trí riêng của ứng dụng (~21:38–21:39, 16/11/2026)
+
+**Bằng chứng mới:** video MOV khoảng **51,9269 giây** do chủ dự án tải riêng vào chat, gửi khoảng 21:43 giờ Việt Nam (Android trên video hiển thị khoảng 21:38–21:39). Đã **AI REVIEWED PHONE VIDEO** bằng xem khung hình theo mốc; không upload video, ảnh trích, tọa độ, thông báo hoặc dữ liệu cá nhân lên GitHub. Thiết bị theo khai báo trước: Xiaomi Redmi Note 12 Pro / Android 13, firmware MIUI/HyperOS **chưa xác minh**. SHA của APK **đang cài** vẫn **UNVERIFIED**.
+
+| Mốc trong video | Bằng chứng quan sát |
+| --- | --- |
+| 0–3s | Ứng dụng khởi động ở tab GPS nền; trước Start báo service stopped, owner none, ACK false. |
+| ~4–9s | Chủ dự án bấm **Bật GPS nền thử** → dialog **Bật dịch vụ thử**. ~7s active/owner `native_safety`/ACK true, acquiring, chưa fresh; ~9s `GPS mới: Có`, `trusted_gps`, acceptedCount 1, GPS age khoảng 464ms. Chỉ chẩn đoán, không tính cước. |
+| ~12–20s | Rời app, vào **Thông tin ứng dụng → Quyền ứng dụng → Vị trí** của chính NaviTaxiMeter; trước đổi quyền đang **Chỉ cho phép khi dùng ứng dụng**, vị trí chính xác bật; sau đó chọn **Không cho phép**, thấy lựa chọn đã được chọn. **Không phải tắt Vị trí toàn hệ thống**. |
+| ~22–28s | Mở lại app bằng biểu tượng, màn splash xuất hiện (~26s). ~28s tab GPS nền báo `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Trạng thái: stopped`, `Chủ GPS: none`, `ACK/heartbeat: Chưa xác nhận`, acceptedCount 0. Có dấu hiệu app được khởi chạy lại; **không thể khẳng định chắc chắn nguyên nhân/đúng thời điểm process kill** nếu không có log OS. |
+| ~38–42s | Vào quyền Vị trí app, khôi phục **Chỉ cho phép khi dùng ứng dụng**, **Sử dụng vị trí chính xác** bật. |
+| ~45–46s | Khi quay lại tab GPS nền, trước khi bấm Start, vẫn `Đã dừng`, fresh false, owner none, ACK false: **không quan sát thấy tự khởi động lại**. |
+| ~48–51s | Chủ dự án **tự bấm** `Bật GPS nền thử` và xác nhận ở dialog. ~50s service active/owner `native_safety`/ACK true, trusted_gps/fresh true, acceptedCount 1, GPS age khoảng 232ms. Đây là **phiên do người dùng chủ động bật**, không phải tự nối lại. Video kết thúc khi service đang active; chưa có clip Stop cuối. |
+
+**ĐÁNH GIÁ: A2-05b runtime app location permission revoke = PASS theo video, giới hạn trong trạng thái UI quan sát được.** Sau khi quyền `Không cho phép` được chọn, video ghi nhận trạng thái dừng, không GPS fresh và không ACK/owner cũ khi mở lại. Sau khi được cấp quyền, trước hành động thủ công không tự Start. Bằng chứng không chứng minh tức thời mọi microsecond khi Android đóng tiến trình, không chứng minh notification/OS-level location FGS state độc lập hoặc race/stale token, không thay thế Android 11–16 OEM matrix. Việc video kết thúc khi service active cần nhắc chủ dự án **Dừng GPS nền thử** nếu còn chạy; không bắt lặp A2-05b.
+
+**Sau video:** A2-01/02/03 PASS UI; A2-04 Home/lock PASS có điều kiện; A2-05a provider OFF PASS video; **A2-05b app permission revoked PASS video**; A2-06 Lab SQLite NOT TESTED; approximate-only permission, stale notification, process kill/reboot/Doze, pin OEM dài, Android 11–16, fare calibration **NOT TESTED**. Issue #2 vẫn OPEN, Issue #3 production single owner + durable app SQLite writer vẫn NOT IMPLEMENTED. Chỉ thử khi xe dừng, không tính cước khách.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
