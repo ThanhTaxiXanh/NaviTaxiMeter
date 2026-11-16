@@ -62,6 +62,25 @@
 
 **Chưa kiểm thử:** A2-05 thu hồi quyền/tắt vị trí; A2-06 optional Lab; rapid Stop, stale notification, kill/reboot/Doze, calibrate quãng đường. Issue #2 vẫn OPEN; không mở thu cước thật.
 
+## 2D. A2-05: video tắt rồi bật Vị trí Android (16:55–16:56, ngày 16/11/2026)
+
+**Bằng chứng:** video MOV khoảng **56,54 giây** do chủ dự án gửi trong chat, đã xem diễn tiến hình ảnh. **Không đưa video, frame hay vị trí vào GitHub**; chỉ ghi trạng thái chẩn đoán cần thiết. Thiết bị do chủ dự án khai báo là Xiaomi Redmi Note 12 Pro/Android 13. Video không chứng minh SHA binary thực sự đã cài.
+
+| Mốc tương đối | Quan sát từ video |
+| --- | --- |
+| 0 giây | Dịch vụ chưa chạy: `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Chủ GPS: none`, `ACK: Chưa xác nhận`. |
+| Khoảng 9 giây | Sau bật dịch vụ thủ công, `Dịch vụ: Đang chạy`, `GPS mới: Có`, `Trạng thái: trusted_gps`, `Chủ GPS: native_safety`, `ACK: Đã xác nhận`, acceptedCount 2, tuổi fix 1615ms. |
+| Khoảng 14–17 giây | Người dùng mở Quick Settings Xiaomi và **tắt công tắc Vị trí**, Android hiện `Truy cập vị trí đã tắt`. |
+| Khoảng 28 giây | Quay về GPS nền: `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Trạng thái: stopped`, `Chủ GPS: none`, `ACK: Chưa xác nhận`, acceptedCount lịch sử 3. |
+| Khoảng 39 giây | Android hiện `Truy cập vị trí đã bật`. |
+| Khoảng 46–48 giây | Khi Vị trí đã được bật lại, dịch vụ **vẫn dừng**, `owner none`, ACK chưa xác nhận, không tự phục hồi phiên cũ trong cửa sổ quan sát ngắn. |
+| Khoảng 49–50 giây | Có **hành động khởi động mới thủ công**, hộp thoại `Bật dịch vụ GPS an toàn?` và nút `Bật dịch vụ thử`; sau xác nhận, service `Đang chạy`, `native_safety`, ACK đã xác nhận nhưng **`GPS mới: Không`, `Trạng thái: acquiring`, acceptedCount 0**. ACK service không được hiểu là GNSS tin cậy. |
+| Khoảng 55 giây | Dịch vụ trở lại `Đã dừng`, `GPS mới: Không`, `Trạng thái: stopped`, owner none và ACK chưa xác nhận; acceptedCount 1 là lịch sử của phiên mới. |
+
+**ĐÁNH GIÁ A2-05 (nhánh tắt Vị trí hệ thống): PASS theo video.** Việc tắt provider làm ứng dụng ngừng service/thu hồi owner và ACK, không dùng trạng thái `trusted_gps` cũ để công bố GPS mới. Khi bật Vị trí trở lại, trong khoảng đã quan sát không tự khởi động phiên cũ. Người dùng có thể bật lại dịch vụ bằng thao tác chủ động; service ACK trong `acquiring` không bị nhầm với fix trusted.
+
+**VẪN NOT TESTED:** thu hồi quyền Vị trí của ứng dụng trong Android Settings (khác với tắt provider hệ thống); giảm xuống approximate; tắt thông báo, process kill/force-stop, reboot, Doze dài, stale PendingIntent token, nhảy đồng hồ, Lab SQLite fault và cấu hình OEM khác. Không kết luận an toàn commercial từ video ~57 giây. **Issue #2 vẫn OPEN.**
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
