@@ -37,6 +37,19 @@
 
 **Sửa lỗi điểm mù từ chính bằng chứng Xiaomi:** commit `8864154eba60afdf8ee4a36795298d4aa2dceb28` sửa thứ tự thông báo lỗi sau cleanup, commit `ca93b99f0443a84773833d161b951317400c7676` thêm 3 test phân biệt GPS_BUSY, cleanup chờ và lỗi cleanup. **Chưa suy diễn CI PASS** cho code mới nếu GitHub Actions chưa hoàn tất; cần lấy **APK DEBUG mới từ run thành công đúng SHA**, xác minh ZIP/APK SHA rồi yêu cầu retest A2-02 để nhìn rõ `GPS_BUSY`. Không dùng ảnh từ APK cũ để chứng minh UI mới.
 
+## 2B. Bổ sung vòng ba: A2-02 đã đối chiếu PASS, giải phóng và mở Preview tuần tự (15:07–15:09)
+
+**Người dùng gửi 3 ảnh chụp điện thoại trong chat riêng.** Một ảnh chứa tọa độ chi tiết; **KHÔNG đăng lại ảnh, tọa độ, địa chỉ hoặc định vị lên GitHub**. Thông tin bên dưới chỉ giữ trạng thái kỹ thuật không định danh.
+
+- **A2-02 loại trừ chủ GPS khác: PASS theo bằng chứng màn hình Android thật.** Khoảng **15:07**, trang `Kiểm tra GPS thật` cho thấy đúng thông báo sau nút `Bắt đầu xem GPS`: `GPS_BUSY: GPS đang được dùng bởi chế độ khác. Dừng GPS nền thử trước khi bật GPS thử.`. Nút vẫn là `Bắt đầu xem GPS`, không có dòng đang thu vị trí hoặc cước.
+- **Stop giải phóng quyền:** ảnh tiếp theo ở trang GPS nền thể hiện `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Trạng thái: stopped`, `Chủ GPS: none`, `ACK/heartbeat: Chưa xác nhận`, **15 mẫu GPS đã chấp nhận trước đó** (counter lịch sử; không chứng minh còn chạy). **PASS** trạng thái đã dừng được quan sát.
+- **Preview sau khi giải phóng:** khoảng **15:09**, trang `Kiểm tra GPS thật` hiển thị `GPS đang cập nhật · chỉ xem thử`, nút `Dừng GPS thử`, **độ chính xác được báo 10,3 m**, **tốc độ 0,0 km/h**; **không ghi tọa độ hoặc thời gian chi tiết từ ảnh**. **PASS** Preview có thể nhận dữ liệu khi native owner đã được giải phóng.
+- Kết quả này xác minh **đường chuyển quyền qua UI và thông báo từ chối GPS_BUSY trên thiết bị thật** trong kịch bản được chụp, **không chứng minh** không thể xảy ra race ở mọi thời điểm, không chứng minh GPS hardware/cự ly độc lập hoặc background long-running.
+- Thông báo `GPS_BUSY` hiển thị trùng với sửa Flutter ở commit `8864154eba60afdf8ee4a36795298d4aa2dceb28`, có import bổ sung để build ở `db4dcab34432c3a1c5a31903e30b0d0ff9b31def`; **không thể đọc SHA APK thật đã cài chỉ từ ảnh**. CI đúng SHA `db4dcab...`: Foundation Flutter Android [run 43826864218](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43826864218) **SUCCESS**, Zero Cost Source Gate [run 43826864300](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43826864300) **SUCCESS**. Native GPS safety DEBUG artifact ID `14206464796` (GitHub SHA256 của ZIP `fc6f2ac2eb1b46a0efb454827a86b61fef22602cf95fbbb43de42ad75c69cc5d`), chưa đối chiếu SHA APK cài trên máy.
+- **Cập nhật ma trận:** A2-01 PASS theo ảnh, **A2-02 PASS theo ảnh**, A2-03 UI Stop PASS, A2-03 notification Stop PASS. **A2-04 Home/khóa màn, A2-05 thu hồi quyền, A2-06 Lab đều NOT TESTED.** Issue #2 vẫn OPEN.
+
+**Bước tiếp theo thực tế:** A2-04 60 giây Home/khóa màn trên Xiaomi với cấu hình tiết kiệm pin ban đầu. Thu ảnh GPS nền trước và sau, đánh giá owner, fresh, ACK và xem notification. Dừng dịch vụ bằng nút sau test. Không dùng khách thật, không chia sẻ tọa độ.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
