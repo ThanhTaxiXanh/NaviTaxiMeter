@@ -86,6 +86,16 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('LocationOwnerRegistry.requestSafetyStop(requestedLease)', service)
         self.assertIn('!LocationOwnerRegistry.safetyStopRequested(serviceLeaseId)', service)
         self.assertIn('LocationOwnerRegistry.requestSafetyStop(expected)', activity)
+        # Safety health never labels coarse/network fixes as trusted GNSS.
+        self.assertIn('GnssFixTrustGate.kt', NATIVE_SOURCES)
+        self.assertIn('GnssFixTrustGateTest.kt', JVM_TEST_SOURCES)
+        self.assertIn('fixTrustGate.accepts(GnssFixEvidence(', service)
+        self.assertIn('registeredProvider == LocationManager.GPS_PROVIDER', service)
+        self.assertIn('latestAcceptedElapsedMs = 0L', service)
+        gate = (root / "GnssFixTrustGate.kt").read_text()
+        self.assertIn('evidence.provider == "gps"', gate)
+        self.assertIn('evidence.hasFineLocationPermission', gate)
+        self.assertIn('fixNanos > lastAcceptedFixNanos', gate)
         self.assertNotIn('LocationOwnerRegistry.cancelPendingSafety', activity)
         self.assertIn('owner != "preview" && owner != "lab"', activity)
 

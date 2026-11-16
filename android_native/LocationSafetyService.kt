@@ -73,6 +73,7 @@ class LocationSafetyService : Service(), LocationListener {
     private var manager: LocationManager? = null
     private var registeredProvider: String? = null
     private var updatesRegistered = false
+    private var fixTrustGate = GnssFixTrustGate()
 
     private fun providerStillEnabled(): Boolean {
         val provider = registeredProvider ?: return false
@@ -226,6 +227,8 @@ class LocationSafetyService : Service(), LocationListener {
             registeredProvider = provider
             acceptedCount = 0L
             latestAcceptedElapsedMs = 0L
+            // Never reuse trusted-fix history across an explicit Service start.
+            fixTrustGate = GnssFixTrustGate()
             state = "acquiring"
             active = true
             @Suppress("DEPRECATION")
@@ -265,18 +268,32 @@ class LocationSafetyService : Service(), LocationListener {
             @Suppress("DEPRECATION")
             location.isFromMockProvider
         }
-        // Monotonic timing avoids counting a changed device wall clock as GPS.
-        val elapsed = SystemClock.elapsedRealtime()
-        val gpsAge = elapsed - location.elapsedRealtimeNanos / 1000000L
-        if (mock || !location.hasAccuracy() ||
-            !location.accuracy.isFinite() || location.accuracy < 0 ||
-            location.accuracy > 30f || gpsAge !in 0..12000 ||
-            location.latitude !in -90.0..90.0 ||
-            location.longitude !in -180.0..180.0
-        ) {
+        // Android NETWORK_PROVIDER is never physical GNSS evidence, even
+        // with apparently good accuracy. Precise permission is mandatory.
+        // Monotonic timestamps and ordering are checked before any healthy
+        // status can be published. The gate locks after an untrusted sample.
+        val credible = fixTrustGate.accepts(GnssFixEvidence(
+            provider = if (registeredProvider == LocationManager.GPS_PROVIDER) {
+                location.provider
+            } else null,
+            hasFineLocationPermission =
+                checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED,
+            mocked = mock,
+            fixElapsedRealtimeNanos = location.elapsedRealtimeNanos,
+            observedElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos(),
+            accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
+            latitude = location.latitude,
+            longitude = location.longitude
+        ))
+        if (!credible) {
+            // A previously accepted fix must not keep the health flag fresh
+            // after a new uncertain source/gap. No auto-recovery in this owner.
+            latestAcceptedElapsedMs = 0L
             state = "untrusted_gps"
             return
         }
+        val elapsed = SystemClock.elapsedRealtime()
         acceptedCount += 1
         latestAcceptedElapsedMs = elapsed
         state = "trusted_gps"
