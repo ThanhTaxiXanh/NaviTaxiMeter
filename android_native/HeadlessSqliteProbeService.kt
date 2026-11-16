@@ -40,6 +40,9 @@ class HeadlessSqliteProbeService : Service() {
     inner class ProbeBinder : Binder() {
         fun isReady(): Boolean = ready
 
+        /** Instrumentation-only: never a production trip or GPS token. */
+        fun debugWriterLeaseForTest(): Long? = debugWriterLease
+
         /**
          * TEST ONLY: actual Kotlin -> headless Dart MethodChannel -> disposable
          * sqflite COMMIT/readback. No location, fares or production trip DB.

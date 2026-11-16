@@ -53,6 +53,9 @@ class HeadlessSqliteProbeInstrumentedTest {
                 Thread.sleep(100)
             }
             assertTrue("Headless Dart entrypoint never ACKed ready", worker?.isReady() == true)
+            val firstWriterLease = worker?.debugWriterLeaseForTest()
+            assertNotNull("First service has no writer lease", firstWriterLease)
+            assertTrue("First writer lease must be positive", firstWriterLease!! > 0L)
             val finished = CountDownLatch(1)
             var result: Any? = null
             var error: String? = null
@@ -144,6 +147,10 @@ class HeadlessSqliteProbeInstrumentedTest {
                 Thread.sleep(100)
             }
             assertTrue("Second Dart engine never reported ready", next?.isReady() == true)
+            val secondWriterLease = next?.debugWriterLeaseForTest()
+            assertNotNull("Rebound service has no writer lease", secondWriterLease)
+            assertTrue("New service reused a stale writer lease",
+                secondWriterLease!! > firstWriterLease)
             val completed = CountDownLatch(1)
             var reboundValue: Any? = null
             var reboundError: String? = null
@@ -192,6 +199,8 @@ class HeadlessSqliteProbeInstrumentedTest {
             var attempts = 0
             while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
             assertTrue("Dart debug checkpoint worker not ready", worker.isReady())
+            val originalLease = worker.debugWriterLeaseForTest()
+            assertNotNull("DEBUG writer lease absent during IPC", originalLease)
 
             // Reject malformed wire identities at the native boundary without
             // touching Dart or poisoning a valid, not-yet-started session.
@@ -328,6 +337,10 @@ class HeadlessSqliteProbeInstrumentedTest {
             var attempts = 0
             while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
             assertTrue("Recreated Dart worker not ready", worker.isReady())
+            val reboundLease = worker.debugWriterLeaseForTest()
+            assertNotNull("DEBUG writer lease absent after rebind", reboundLease)
+            assertTrue("Stale writer token reused after engine teardown",
+                reboundLease!! > originalLease!!)
             val finished = CountDownLatch(1)
             var recoveryError: String? = null
             worker.debugCheckpoint(session, 71L, 9L, payload) { _, error ->
