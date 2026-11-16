@@ -1,7 +1,8 @@
 import tempfile
 import unittest
 from pathlib import Path
-from verify_android_probe_results import verify, EXPECTED_CLASS, EXPECTED_METHOD
+from verify_android_probe_results import (verify, EXPECTED_CLASS,
+                                          EXPECTED_METHOD, EXPECTED_DEBUG_METHOD)
 
 
 class AndroidProbeEvidenceTests(unittest.TestCase):
@@ -12,15 +13,17 @@ class AndroidProbeEvidenceTests(unittest.TestCase):
         self.dir.mkdir(parents=True)
 
     def report(self, body="", cls=EXPECTED_CLASS, name=EXPECTED_METHOD):
+        debug_case = (f'<testcase classname="{cls}" name="{EXPECTED_DEBUG_METHOD}" />'
+                      if name == EXPECTED_METHOD and cls == EXPECTED_CLASS else "")
         (self.dir / "TEST-probe.xml").write_text(
-            f'<testsuite name="probe" tests="1">'
+            f'<testsuite name="probe" tests="2">'
             f'<testcase classname="{cls}" name="{name}">{body}</testcase>'
-            f'</testsuite>', encoding="utf-8",
+            + debug_case + '</testsuite>', encoding="utf-8",
         )
 
-    def test_accepts_one_executed_pass(self):
+    def test_accepts_both_executed_passes(self):
         self.report()
-        self.assertEqual(verify(self.dir.parent), 1)
+        self.assertEqual(verify(self.dir.parent), 2)
 
     def test_rejects_missing_results(self):
         with self.assertRaises(ValueError):

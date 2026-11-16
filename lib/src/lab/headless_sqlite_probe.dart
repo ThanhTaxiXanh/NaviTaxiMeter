@@ -1,5 +1,7 @@
 import 'dart:ui' show DartPluginRegistrant;
 
+import 'debug_checkpoint_transport.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as path;
@@ -96,9 +98,17 @@ Future<void> runHeadlessSqliteProbe() async {
   DartPluginRegistrant.ensureInitialized();
   const channel = MethodChannel(headlessProbeChannel);
   final writer = SerializedHeadlessProbeWriter();
+  final debugCheckpoint = DebugCheckpointTransport();
   channel.setMethodCallHandler((call) async {
     if (call.method == 'writeAndRead') {
       return writer.writeAndVerify();
+    }
+    if (call.method == 'debugCheckpoint') {
+      final wire = call.arguments;
+      if (wire is! Map) {
+        throw const FormatException('Expected DEBUG proposal map');
+      }
+      return debugCheckpoint.submit(wire);
     }
     throw MissingPluginException('Unsupported headless probe method');
   });

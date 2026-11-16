@@ -1,3 +1,14 @@
+# CHU KỲ MỚI — LƯỢT 1/7 (16/11/2026) · ISSUE #3 P1 DEBUG IPC
+
+- Chat mới khởi tạo `AI_REPLY_COUNT=0`; sau lượt trả lời này `AI_REPLY_COUNT=1`, tiếp tục bàn giao **đầy đủ** ở lượt 7/7 theo 3.1–3.10 và Phụ lục A. Đã đọc toàn bộ bản bàn giao ngày 16/11/2026 và quy tắc cứng.
+- HEAD trước viết mã: `b72984af3d1887183b4f880d4aa871360ab0fa65`, sau mốc code `55c1c62` chỉ có docs. CI đúng HEAD trước viết: Foundation `43775491594` SUCCESS, Zero Cost `43775491561` SUCCESS. PR #1 Draft/open, issue #2/#3 open, `main` ở `539ff788`.
+- Lượt này: thêm `lib/src/lab/debug_checkpoint_transport.dart`, nối **Kotlin native debug-bound service → Dart headless MethodChannel → sqflite transaction → reopen/readback → ACK typed**; thêm instrumented Android 14 test để bắt concurrency/replay/stale fence/PAUSED/rebind. `tool/verify_android_probe_results.py` bắt buộc nhận đủ **2** test executed. Tài liệu: `docs/ISSUE_3_P1_ANDROID_DEBUG_TYPED_IPC.md`.
+- **Quan trọng:** đây là DB `navitaximeter_DEBUG_IPC_DBG_*.db` và service DEBUG-only; **không** có GNSS production owner, fare, route, DB khách, FGS thật, chưa có Android vật lý hoặc post-COMMIT ACK production. `navitaximeter_v1.db` giữ schema v3, không migrate. CI cho commit mã mới phải kiểm chứng đúng SHA sau push, không tự nhận PASS.
+- Tiếp theo: xác minh Foundation/Zero Cost và Android emulator XML run đúng SHA mới; sửa nếu fail, rồi thiết kế và kiểm chứng `TripLocationService` GNSS owner thật + một worker production writer với durable generation fence; không vội làm UI/map.
+- Chỉ ghi nhánh `feature/navitaximeter-foundation`, không merge main, không sửa TTX, không Google Billing/paid APIs, không thu cước khách. Issue #2 Android vật lý **NOT TESTED**, chưa mời test vì thiếu APK+nút+kịch bản đủ điều kiện Phụ lục A.
+
+---
+
 # TIẾP QUẢN CHAT HIỆN TẠI: BÀN GIAO BẮT BUỘC 7/7, NGÀY 16/11/2026
 
 - **Đã hoàn thành lượt bàn giao thứ 7/7 trong chat hiện tại.** `AI_REPLY_COUNT=7`. Nếu tiếp tục cùng chat: 8/7 về chu kỳ và bàn giao ở 14/21...; **chat mới reset 0**, bàn giao ở lượt 7 tiếp theo.

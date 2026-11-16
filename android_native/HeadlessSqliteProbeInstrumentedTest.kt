@@ -163,4 +163,166 @@ class HeadlessSqliteProbeInstrumentedTest {
             context.unbindService(nextConnection)
         }
     }
+
+    @Test
+    fun realKotlinToHeadlessDartDebugIpcAcksOnlyAfterSqliteReadback() {
+        // No GPS, tariff, route, money or production SQLite in this test.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val destroyedBefore = HeadlessSqliteProbeService.destructionCount()
+        val serviceReady = CountDownLatch(1)
+        var binder: HeadlessSqliteProbeService.ProbeBinder? = null
+        val connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                binder = service as? HeadlessSqliteProbeService.ProbeBinder
+                serviceReady.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                binder = null
+            }
+        }
+        assertTrue(context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            connection, Context.BIND_AUTO_CREATE
+        ))
+        val session = "DBG_${android.os.SystemClock.elapsedRealtimeNanos()}"
+        val payload = "a".repeat(64)
+        try {
+            assertTrue("Debug service did not bind", serviceReady.await(20, TimeUnit.SECONDS))
+            val worker = binder ?: throw AssertionError("Debug binder is missing")
+            var attempts = 0
+            while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
+            assertTrue("Dart debug checkpoint worker not ready", worker.isReady())
+
+            // Eight actual Kotlin MethodChannel requests contend for the one
+            // serialized Dart sqflite writer. ACK requires COMMIT + reopen.
+            val done = CountDownLatch(8)
+            val acked = Collections.synchronizedList(mutableListOf<Long>())
+            val ids = Collections.synchronizedSet(mutableSetOf<String>())
+            val failures = Collections.synchronizedList(mutableListOf<String>())
+            repeat(8) { index ->
+                worker.debugCheckpoint(session, 71L, index.toLong(), payload) {
+                    response, error ->
+                    if (error != null) failures.add(error)
+                    val ack = response as? Map<*, *>
+                    if (ack == null) {
+                        failures.add("No post-COMMIT ACK at sequence $index")
+                    } else {
+                        if (ack["type"] != "debug.checkpoint.ack.v1" ||
+                            ack["sessionId"] != session ||
+                            (ack["generation"] as? Number)?.toLong() != 71L ||
+                            (ack["sequence"] as? Number)?.toLong() != index.toLong() ||
+                            ack["payloadHash"] != payload ||
+                            ack["probeOnly"] != true ||
+                            ack["passengerFareEnabled"] != false
+                        ) {
+                            failures.add("Unverified DEBUG ACK at $index")
+                        }
+                        acked.add(index.toLong())
+                        ids.add(ack["checkpointId"].toString())
+                    }
+                    done.countDown()
+                }
+            }
+            assertTrue("Native->Dart callback timeout",
+                done.await(90, TimeUnit.SECONDS))
+            assertTrue("Native IPC error: $failures", failures.isEmpty())
+            assertEquals((0L..7L).toList(), acked.sorted())
+            assertEquals(8, ids.size)
+
+            // Byte-identical replay must return the same committed identity.
+            val replayDone = CountDownLatch(1)
+            var replayId: String? = null
+            var replayError: String? = null
+            worker.debugCheckpoint(session, 71L, 7L, payload) { response, error ->
+                replayId = (response as? Map<*, *>)?.get("checkpointId") as? String
+                replayError = error
+                replayDone.countDown()
+            }
+            assertTrue(replayDone.await(30, TimeUnit.SECONDS))
+            assertEquals(null, replayError)
+            assertTrue(ids.contains(replayId))
+
+            // Foreign generation is rejected natively before Dart sees it.
+            val staleDone = CountDownLatch(1)
+            var staleError: String? = null
+            worker.debugCheckpoint(session, 72L, 8L, payload) { _, error ->
+                staleError = error
+                staleDone.countDown()
+            }
+            assertTrue(staleDone.await(30, TimeUnit.SECONDS))
+            assertEquals("STALE_DEBUG_FENCE", staleError)
+
+            val nextDone = CountDownLatch(1)
+            var nextError: String? = null
+            worker.debugCheckpoint(session, 71L, 8L, payload) { _, error ->
+                nextError = error
+                nextDone.countDown()
+            }
+            assertTrue(nextDone.await(30, TimeUnit.SECONDS))
+            assertEquals(null, nextError)
+
+            // Conflicting same-sequence payload fails closed. The service
+            // rejects any subsequent request, even when the data is valid.
+            val conflictDone = CountDownLatch(1)
+            var conflictError: String? = null
+            worker.debugCheckpoint(session, 71L, 8L, "b".repeat(64)) { _, error ->
+                conflictError = error
+                conflictDone.countDown()
+            }
+            assertTrue(conflictDone.await(30, TimeUnit.SECONDS))
+            assertNotNull("Conflicting replay must be rejected", conflictError)
+            val pausedDone = CountDownLatch(1)
+            var pausedError: String? = null
+            worker.debugCheckpoint(session, 71L, 9L, payload) { _, error ->
+                pausedError = error
+                pausedDone.countDown()
+            }
+            assertTrue(pausedDone.await(30, TimeUnit.SECONDS))
+            assertEquals("DEBUG_SESSION_PAUSED", pausedError)
+        } finally {
+            context.unbindService(connection)
+        }
+
+        var waits = 0
+        while (HeadlessSqliteProbeService.destructionCount() <= destroyedBefore &&
+            waits++ < 150) Thread.sleep(100)
+        assertTrue("Old engine was not torn down",
+            HeadlessSqliteProbeService.destructionCount() > destroyedBefore)
+
+        // Recreating the engine must not silently revive a persisted session.
+        val rebindDone = CountDownLatch(1)
+        var rebound: HeadlessSqliteProbeService.ProbeBinder? = null
+        val secondConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                rebound = service as? HeadlessSqliteProbeService.ProbeBinder
+                rebindDone.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                rebound = null
+            }
+        }
+        assertTrue(context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            secondConnection, Context.BIND_AUTO_CREATE
+        ))
+        try {
+            assertTrue(rebindDone.await(20, TimeUnit.SECONDS))
+            val worker = rebound ?: throw AssertionError("Rebound worker missing")
+            var attempts = 0
+            while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
+            assertTrue("Recreated Dart worker not ready", worker.isReady())
+            val finished = CountDownLatch(1)
+            var recoveryError: String? = null
+            worker.debugCheckpoint(session, 71L, 9L, payload) { _, error ->
+                recoveryError = error
+                finished.countDown()
+            }
+            assertTrue(finished.await(30, TimeUnit.SECONDS))
+            assertNotNull("New worker must reject automatic DEBUG recovery",
+                recoveryError)
+        } finally {
+            context.unbindService(secondConnection)
+        }
+    }
+
 }

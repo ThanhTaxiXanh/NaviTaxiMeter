@@ -11,13 +11,15 @@ import xml.etree.ElementTree as ET
 
 EXPECTED_CLASS = "vn.navitaximeter.HeadlessSqliteProbeInstrumentedTest"
 EXPECTED_METHOD = "boundHeadlessEngineCanOpenSqfliteAndReadCommittedProbe"
+EXPECTED_DEBUG_METHOD = "realKotlinToHeadlessDartDebugIpcAcksOnlyAfterSqliteReadback"
+EXPECTED_METHODS = (EXPECTED_METHOD, EXPECTED_DEBUG_METHOD)
 
 
 def verify(results_dir: Path) -> int:
     root = Path(results_dir)
     if not root.is_dir():
         raise ValueError("Android instrumented XML directory missing")
-    executed = 0
+    executed = {name: 0 for name in EXPECTED_METHODS}
     for report in root.rglob("*.xml"):
         try:
             tree = ET.parse(report)
@@ -26,20 +28,20 @@ def verify(results_dir: Path) -> int:
         for case in tree.iter("testcase"):
             cls = case.attrib.get("classname", "")
             method = case.attrib.get("name", "")
-            if not cls.endswith(EXPECTED_CLASS) or method != EXPECTED_METHOD:
+            if not cls.endswith(EXPECTED_CLASS) or method not in EXPECTED_METHODS:
                 continue
-            executed += 1
+            executed[method] += 1
             if any(child.tag in ("failure", "error", "skipped") for child in case):
                 raise ValueError("Headless Android test failed/skipped: " + str(report))
-    if executed != 1:
+    if any(count != 1 for count in executed.values()):
         raise ValueError(
-            "Expected exactly ONE executed headless Android test; found "
-            + str(executed) + ". Compile-only/empty result is NOT PASS."
+            "Require exactly one executed result for BOTH Android debug "
+            + "probe methods, found " + str(executed)
         )
-    print("PASS: headless FlutterEngine/sqflite instrumentation actually "
-          "executed once on an Android emulator (NOT a physical device)")
+    print("PASS: TWO Android emulator instrumented methods executed: "
+          "headless SQLite counter and Kotlin-Dart DEBUG typed checkpoint ACK")
     print("WARNING: NO production SQLite writer, GNSS or passenger-fare proof")
-    return executed
+    return sum(executed.values())
 
 
 if __name__ == "__main__":

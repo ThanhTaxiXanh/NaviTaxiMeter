@@ -31,11 +31,108 @@ class HeadlessSqliteProbeService : Service() {
     private val binder = ProbeBinder()
     private val callbackFence = HeadlessProbeCallbackFence()
     @Volatile private var ready = false
+    private var checkpointFaulted = false
+    private var activeDebugFence: String? = null
     private var engine: FlutterEngine? = null
     private var channel: MethodChannel? = null
 
     inner class ProbeBinder : Binder() {
         fun isReady(): Boolean = ready
+
+        /**
+         * TEST ONLY: actual Kotlin -> headless Dart MethodChannel -> disposable
+         * sqflite COMMIT/readback. No location, fares or production trip DB.
+         * A timeout or unverified ACK faults this bound-service session.
+         */
+        fun debugCheckpoint(
+            sessionId: String, generation: Long, sequence: Long,
+            payloadHash: String, callback: (Any?, String?) -> Unit
+        ) {
+            mainHandler.post {
+                if (!Regex("^DBG_[A-Za-z0-9_-]{1,72}$").matches(sessionId) ||
+                    generation <= 0L || sequence < 0L ||
+                    !Regex("^[0-9a-f]{64}$").matches(payloadHash)
+                ) {
+                    callback(null, "INVALID_DEBUG_PROPOSAL")
+                    return@post
+                }
+                if (checkpointFaulted) {
+                    callback(null, "DEBUG_SESSION_PAUSED")
+                    return@post
+                }
+                val requestedFence = "$sessionId/$generation"
+                if (activeDebugFence != null && activeDebugFence != requestedFence) {
+                    callback(null, "STALE_DEBUG_FENCE")
+                    return@post
+                }
+                val endpoint = channel
+                if (!ready || endpoint == null) {
+                    callback(null, "DART_WORKER_NOT_READY")
+                    return@post
+                }
+                val id = callbackFence.register(callback)
+                if (id == null) {
+                    callback(null, "SERVICE_DESTROYED")
+                    return@post
+                }
+                if (activeDebugFence == null) activeDebugFence = requestedFence
+                val wire = mapOf(
+                    "type" to "debug.checkpoint.proposal.v1",
+                    "sessionId" to sessionId,
+                    "generation" to generation,
+                    "sequence" to sequence,
+                    "payloadHash" to payloadHash
+                )
+                mainHandler.postDelayed({
+                    if (callbackFence.resolve(id, null, "DEBUG_ACK_TIMEOUT")) {
+                        checkpointFaulted = true
+                    }
+                }, 20000L)
+                try {
+                    endpoint.invokeMethod("debugCheckpoint", wire,
+                        object : MethodChannel.Result {
+                            override fun success(result: Any?) {
+                                mainHandler.post {
+                                    val ack = result as? Map<*, *>
+                                    val valid = ack?.get("type") == "debug.checkpoint.ack.v1" &&
+                                        ack["sessionId"] == sessionId &&
+                                        (ack["generation"] as? Number)?.toLong() == generation &&
+                                        (ack["sequence"] as? Number)?.toLong() == sequence &&
+                                        ack["payloadHash"] == payloadHash &&
+                                        (ack["checkpointId"] as? String)?.isNotBlank() == true &&
+                                        ack["probeOnly"] == true &&
+                                        ack["passengerFareEnabled"] == false
+                                    if (!valid) checkpointFaulted = true
+                                    callbackFence.resolve(
+                                        id,
+                                        if (valid && !checkpointFaulted) result else null,
+                                        if (valid && !checkpointFaulted) null
+                                        else "DEBUG_ACK_UNVERIFIED_OR_PAUSED"
+                                    )
+                                }
+                            }
+                            override fun error(
+                                code: String, message: String?, details: Any?
+                            ) {
+                                mainHandler.post {
+                                    checkpointFaulted = true
+                                    callbackFence.resolve(id, null, "DEBUG_WORKER_ERROR: $code")
+                                }
+                            }
+                            override fun notImplemented() {
+                                mainHandler.post {
+                                    checkpointFaulted = true
+                                    callbackFence.resolve(id, null, "DEBUG_METHOD_MISSING")
+                                }
+                            }
+                        })
+                } catch (_: RuntimeException) {
+                    checkpointFaulted = true
+                    callbackFence.resolve(id, null, "DEBUG_CHANNEL_FAILED")
+                }
+            }
+        }
+
 
         fun writeAndRead(callback: (Any?, String?) -> Unit) {
             mainHandler.post {
@@ -111,6 +208,8 @@ class HeadlessSqliteProbeService : Service() {
 
     override fun onDestroy() {
         ready = false
+        checkpointFaulted = true
+        activeDebugFence = null
         callbackFence.close()
         channel?.setMethodCallHandler(null)
         channel = null
