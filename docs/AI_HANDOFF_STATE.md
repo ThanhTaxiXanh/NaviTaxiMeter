@@ -1,3 +1,13 @@
+# CHU KỲ 8 — LƯỢT 2/7 · XIAOMI A2-05b VIDEO PASS (16/11/2026, UTC+07)
+
+- Sau phản hồi này: **AI_REPLY_COUNT=2/7**. Lượt **7/7** phải tạo bàn giao đầy đủ 3.1–3.10 + Phụ lục A/C. Trong cùng chat không reset.
+- Người dùng gửi video MOV **51,93 giây** khoảng 21:43 16/11/2026, ghi thao tác Xiaomi Android 13 thu hồi **quyền Vị trí riêng NaviTaxiMeter**. AI đã xem các mốc 0–51 giây; trạng thái trước revoke active/owner native_safety/trusted_gps/ACK confirmed, trong quyền ứng dụng chọn **Không cho phép**, sau mở lại app stopped/fresh false/owner none/ACK false, sau cấp lại quyền không tự Start. Người dùng **bấm Start thủ công** ở cuối video, lần mới active/ACK/fresh; **cuối video còn active, nên hướng dẫn Stop nếu vẫn chạy**. **A2-05b PASS theo video, giới hạn UI**, chưa chứng minh thời điểm process kill/race/Android OS logs, APK cài chưa được đối chiếu SHA.
+- Bằng chứng **chỉ văn bản sanitized** đã được thêm vào `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` (mục 2E), runbook A2-05b được chú giải; **không upload raw video/frame/GPS/PII lên GitHub**. Các GitHub docs-only commits mới cần đối chiếu đúng HEAD/CI.
+- Issue #2 **OPEN**, không yêu cầu lặp A2-05b. A2-06 Lab SQLite, approximate-only, stale Stop token, Doze/kill/reboot, battery/OEM và Android 11–16 còn NOT TESTED; Issue #3 production single GNSS owner + one durable app SQLite writer **NOT IMPLEMENTED**.
+- Giữ PR #1 Draft, nhánh feature/navitaximeter-foundation, main/TTX READ-ONLY, ZERO PAID API, SQLite v3/prefs intact, không thu cước; tiếp theo ưu tiên kiểm thử an toàn có hướng dẫn cụ thể, từng ca một khi có nhu cầu và thiết bị.
+
+---
+
 # CHU KỲ 8 — LƯỢT 1/7 · TIẾP QUẢN TỪ CYCLE7 (16/11/2026, UTC+07)
 
 - Cuộc trò chuyện mới đã **reset AI_REPLY_COUNT=0** lúc tiếp quản; sau phản hồi hoàn tất **AI_REPLY_COUNT=1/7**. Lượt AI thứ **7/7 trong chat mới** phải bàn giao độc lập 3.1–3.10 kèm Phụ lục A/C; không reset trong cùng chat.
