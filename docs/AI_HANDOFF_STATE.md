@@ -1,3 +1,16 @@
+# CHU KỲ 7 — LƯỢT 1/7 · TIẾP QUẢN 16/11/2026 (XIAOMI ANDROID 13)
+
+- Trò chuyện mới reset AI_REPLY_COUNT=0; sau lượt trả lời hiện tại **AI_REPLY_COUNT=1/7**, lượt **7/7** phải viết bản bàn giao đầy đủ mục 3.1–3.10 và Phụ lục A.
+- Đã đọc `docs/HANDOFF_2026-11-16_CYCLE6_7-7.md` + Phụ lục A/C, `AGENTS.md`, `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`, skills code-commander/location-background/safe-change/red-green/github-actions; đối chiếu mã nguồn UI và Issue #2/#3.
+- Repo `ThanhTaxiXanh/NaviTaxiMeter`, nhánh duy nhất `feature/navitaximeter-foundation`, PR #1 **OPEN/DRAFT**, Issue #2 **OPEN/PHYSICAL NOT TESTED**, Issue #3 **OPEN/production GNSS owner+writer NOT IMPLEMENTED**. Không sửa main/TTX, không thu cước, không paid API, không migration SQLite v3, không force push.
+- Chủ dự án xác nhận thiết bị có thể thử: **Xiaomi Redmi Note 12 Pro, Android 13**; phiên bản MIUI/HyperOS chưa xác minh. **Chưa có kết quả GPS vật lý**, tất cả A2-01…A2-06 NOT TESTED.
+- Đã xác minh CI trên HEAD docs-only `f7172087315aa78e2f9f1c1fc9e2f5a1a3da88ab`: Foundation PR 43815099013 **SUCCESS**, Zero Cost PR 43815099105 **SUCCESS**. Sau đó có docs-only commit mới nên phải kiểm lại CI đúng HEAD.
+- Đã tải artifact 14200424290 từ code commit `fff1c65ad2edad0ef90b8fde1da987ee0f6e8a24` (Foundation PR 43811708123 SUCCESS): ZIP SHA-256 `363824f62aa6d02ed50c380a38f452a9fb182b8b2d42af123a529bc0fb623cd5`; APK SHA-256 `7ec6a8bbd39252cc27663566f6c280110ab23fb235a54fae71b6d73962dc540e`; một `app-debug.apk` 165929486 bytes. APK DEBUG đã được trích xuất/gửi cho chủ dự án trong chat, **không phải build production**.
+- Thêm runbook đúng thiết bị `docs/ISSUE_2_XIAOMI_REDMI_NOTE_12_PRO_ANDROID13_RUNBOOK_2026-11-16.md` tại commit `98933437ec20a0ad55931ee8a9e3aeee608eab86`; sử dụng đúng nút UI đã xác minh, bảo vệ PII, hướng dẫn A2-01…A2-05, A2-06 tùy chọn.
+- **Bước tiếp theo chính xác**: kiểm GitHub CI SHA sau docs commit; đề nghị người dùng chạy A2-01 trên Xiaomi, gửi ảnh chụp đã che tọa độ và trạng thái owner/ACK; không tự ghi PASS khi chưa nhận bằng chứng. Mọi FAIL phải xử lý root cause. P1 Issue #3 production writer/FGS chờ physical evidence, chưa hiện thực. Giữ quy tắc 7 lượt.
+
+---
+
 # CHU KỲ 5 — BÀN GIAO BẮT BUỘC 7/7, 16/11/2026
 
 - AI_REPLY_COUNT = 7/7 trong chat này; chat mới reset 0, tiếp tục bàn giao sau mỗi 7 lượt.
