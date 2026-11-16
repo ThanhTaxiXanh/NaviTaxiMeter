@@ -1,3 +1,14 @@
+# CHU KỲ 8 — LƯỢT 3/7 · CHUẨN BỊ XIAOMI A2-05c (16/11/2026, UTC+07)
+
+- **AI_REPLY_COUNT=3/7 sau phản hồi này** trong chat hiện tại; lượt 7/7 phải tạo hồ sơ bàn giao đầy đủ, không reset trong cùng chat.
+- Đã kiểm tra repository HEAD trước viết `01faacf994d37cca85880565df936f438cbc140a`, PR #1 vẫn OPEN/DRAFT, Issue #2/#3 OPEN. Trên SHA đó Zero Cost PR run [43889882523](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43889882523) **SUCCESS**; Foundation PR run [43889882563](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43889882563) **IN PROGRESS** tại lúc kiểm. CI không chứng minh thiết bị vật lý.
+- **Bước mới:** tạo runbook A2-05c **chuyển quyền precise → approximate-only riêng NaviTaxiMeter**, không lặp A2-05a/b đã PASS video. Tệp `docs/ISSUE_2_XIAOMI_ANDROID13_A2_05C_APPROXIMATE_ONLY_RUNBOOK_2026-11-16.md`, commit `151c202e3d459279ad797293bd5b8a43a00f8b26`, cập nhật comment Issue #2 ID `6920035748`. **A2-05c chưa thử trên máy, NOT TESTED.** Không yêu cầu cài lại bản APK khi máy còn bản debug đúng UI; installed APK hash vẫn UNVERIFIED.
+- Rà soát source `LocationSafetyService.kt`, `GnssFixTrustGate.kt`, `SafetyServicePage`: coarse-only có thể giữ FGS ACK nhưng không được tính là trusted GNSS. `snapshot` không kiểm precise permission trực tiếp nên **khả năng hiển thị stale trong khoảng 12s cần thử trên máy**; chưa kết luận lỗi. Khi người dùng gửi ảnh/video, chỉ AI REVIEWED sau đối chiếu; mở bug riêng nếu FAIL thật.
+- Không thay source, SQLite v3/tariff/receipt, main/TTX; không cước khách, no paid API, PR #1 Draft. Issue #3 production GNSS owner/writer **chưa có**. Sau docs commit phải lấy HEAD + CI đúng SHA để xác minh.
+- Bước kế tiếp: người dùng có thể thử **chỉ A2-05c** theo runbook khi xe dừng; chụp 3–4 ảnh đã che PII (trước, precise OFF, UI sau, restore trước Start) hoặc video ngắn. Nếu không muốn test tiếp, ưu tiên review thiết kế Issue #3, không đòi lặp ca PASS.
+
+---
+
 # CHU KỲ 8 — LƯỢT 2/7 · XIAOMI A2-05b VIDEO PASS (16/11/2026, UTC+07)
 
 - Sau phản hồi này: **AI_REPLY_COUNT=2/7**. Lượt **7/7** phải tạo bàn giao đầy đủ 3.1–3.10 + Phụ lục A/C. Trong cùng chat không reset.
