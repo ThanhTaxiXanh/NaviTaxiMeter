@@ -50,6 +50,18 @@
 
 **Bước tiếp theo thực tế:** A2-04 60 giây Home/khóa màn trên Xiaomi với cấu hình tiết kiệm pin ban đầu. Thu ảnh GPS nền trước và sau, đánh giá owner, fresh, ACK và xem notification. Dừng dịch vụ bằng nút sau test. Không dùng khách thật, không chia sẻ tọa độ.
 
+## 2C. A2-04: màn hình trước/sau Home/khóa máy (15:17–15:19)
+
+**Người dùng gửi ba ảnh chụp thiết bị trong cuộc trò chuyện riêng ngày 16/11/2026, sau hướng dẫn thử A2-04 Home → khóa màn 60 giây → mở khóa → đọc lại → Stop.** Không upload ảnh hoặc dữ liệu riêng tư lên GitHub. **Ảnh không thể tự chứng minh thao tác Home/khóa máy kéo dài bao lâu**; điều kiện thao tác dựa vào việc người dùng thực hiện quy trình đã yêu cầu.
+
+- **Trước (15:17):** `Dịch vụ: Đang chạy`, `GPS mới: Có`, `Trạng thái: trusted_gps`, `Chủ GPS: native_safety`, `ACK/heartbeat: Đã xác nhận`, `Số mẫu GPS chấp nhận: 1`, `Tuổi mẫu GPS: 2942 ms`.
+- **Sau (15:19):** `Dịch vụ: Đang chạy`, `GPS mới: Có`, `Trạng thái: trusted_gps`, `Chủ GPS: native_safety`, `ACK/heartbeat: Đã xác nhận`, `Số mẫu GPS chấp nhận: 33`, `Tuổi mẫu GPS: 3559 ms`.
+- **Kết thúc (15:19):** `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Trạng thái: stopped`, `Chủ GPS: none`, `ACK/heartbeat: Chưa xác nhận`, số mẫu tích lũy 36. Đây là counter trước đó; không còn ACK khi dừng.
+
+**A2-04: PASS theo bằng chứng UI trước/sau, với điều kiện người dùng đã Home/khóa màn ít nhất 60 giây như hướng dẫn.** Bằng chứng xác nhận app báo session/ACK hợp lệ khi trở lại và giải phóng owner sau stop; **không chứng minh liên tục ở mỗi thời điểm màn khóa**, không chứng minh vượt Doze lâu, process kill, OEM aggressive battery, hoặc GNSS/cự ly chuẩn thương mại.
+
+**Chưa kiểm thử:** A2-05 thu hồi quyền/tắt vị trí; A2-06 optional Lab; rapid Stop, stale notification, kill/reboot/Doze, calibrate quãng đường. Issue #2 vẫn OPEN; không mở thu cước thật.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
