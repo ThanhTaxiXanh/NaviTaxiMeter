@@ -1,3 +1,14 @@
+# CHU KỲ 8 — LƯỢT 1/7 · TIẾP QUẢN TỪ CYCLE7 (16/11/2026, UTC+07)
+
+- Cuộc trò chuyện mới đã **reset AI_REPLY_COUNT=0** lúc tiếp quản; sau phản hồi hoàn tất **AI_REPLY_COUNT=1/7**. Lượt AI thứ **7/7 trong chat mới** phải bàn giao độc lập 3.1–3.10 kèm Phụ lục A/C; không reset trong cùng chat.
+- Đã đọc handoff Cycle7, AGENTS.md, navi-code-commander, navi-location-background, navi-github-actions, kiểm source `SafetyServicePage`/`LocationSafetyService`, Issue #2/#3 và PR #1.
+- Đã xác minh branch HEAD trước ghi `c77a4157a691620e69eeb0f3a6e46d8bdecbb862`: Foundation PR [43846686647](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43846686647) **SUCCESS**, Zero Cost PR [43846686523](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43846686523) **SUCCESS**. Hai job Foundation PASS gồm build/test và Android 14 emulator headless DEBUG; không chứng minh Android Xiaomi/GNSS thực.
+- **Tiếp tục Issue #2 đúng điểm dở:** đã tạo `docs/ISSUE_2_XIAOMI_ANDROID13_A2_05B_APP_PERMISSION_RUNBOOK_2026-11-16.md` tại docs-only commit `ba78baf87167dca263c19433a1e698bdbf8a5dc1`, có chi tiết thao tác và PASS/FAIL/NOT TESTED; comment Issue #2 ID `6914567232`. **A2-05b thu hồi quyền ứng dụng vẫn NOT TESTED**; chờ ảnh đã che PII từ Xiaomi Android 13. Không lặp lại provider OFF A2-05 đã PASS video.
+- HEAD sau cập nhật state sẽ lại đổi; cần lấy HEAD/CI theo đúng SHA, không lấy CI PASS cũ gán sang HEAD mới. Không sửa source/DB/APK, không thu cước, không add Google Billing/API trả phí, PR #1 Draft, Issue #3 production single GNSS owner + durable writer NOT IMPLEMENTED.
+- **Bước kế tiếp:** user chạy A2-05b trên điện thoại khi dừng xe (không khách/không lái), gửi evidence; AI phân loại ca, cập nhật evidence text + Issue #2, mở bug riêng khi có FAIL. Nếu user chưa test, tiếp tục review Issue #3 design mà không giả định production đã tồn tại.
+
+---
+
 # CHU KỲ 7 — BÀN GIAO BẮT BUỘC 7/7 (16/11/2026) · XIAOMI A2-05 VIDEO PASS
 
 - **AI_REPLY_COUNT=7/7 sau phản hồi này**, đã hoàn tất hồ sơ mới **độc lập**: `docs/HANDOFF_2026-11-16_CYCLE7_7-7.md` (mục 3.1–3.10, Phụ lục A quy tắc 9 nguyên văn, Phụ lục B tình trạng điện thoại, Phụ lục C quy tắc 10 nguyên văn), tạo tại commit `3c8c66f3addf87c64344877732816b9aa9e611cb`. Khi chuyển chat mới reset 0; vẫn cùng chat lượt tiếp theo 8 và bàn giao lại ở 14, không reset giữa chu kỳ.
