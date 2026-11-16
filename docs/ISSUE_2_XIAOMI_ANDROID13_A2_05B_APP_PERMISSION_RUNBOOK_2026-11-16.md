@@ -2,6 +2,10 @@
 
 **Ngày soạn:** 16/11/2026 (UTC+07). **Trạng thái:** PREPARED / **NOT TESTED**. Đây là ca MỚI, khác A2-05 tắt công tắc Vị trí toàn hệ thống đã PASS theo video; không yêu cầu lặp ca đó.
 
+**CẬP NHẬT BẰNG CHỨNG 16/11/2026, ~21:38–21:39 (UTC+07):** **A2-05b PASS THEO VIDEO** 51,93 giây đã được AI đối chiếu (revoke app permission → app stopped/owner none/fresh false/ACK false; khôi phục quyền không tự Start; người dùng bấm Start thủ công mới). Xem `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` mục 2E. **Chưa kiểm thử tất cả các race/OEM, APK installed hash chưa xác minh, Issue #2 OPEN.** Phần hướng dẫn dưới đây là kịch bản lưu tham chiếu, **không yêu cầu người dùng lặp lại ca đã PASS**. Video cuối có service active, cần Stop khi không thử.
+
+
+
 ## 1. Mục tiêu và bản đang kiểm
 
 - **Mục tiêu:** kiểm fail-closed khi thu hồi quyền Vị trí của **ứng dụng NaviTaxiMeter** trong lúc Android GPS nền chẩn đoán đang hoạt động. Phân biệt service dừng/ACK mất, tiến trình bị Android đóng, và dữ liệu không thể quan sát. Sau khi cấp lại quyền, **không tự nối lại phiên cũ**.
