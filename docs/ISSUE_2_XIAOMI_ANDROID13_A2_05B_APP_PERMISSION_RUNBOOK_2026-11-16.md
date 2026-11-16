@@ -1,6 +1,6 @@
 # Issue #2 — A2-05b: thu hồi quyền Vị trí RIÊNG của NaviTaxiMeter (Xiaomi Android 13)
 
-**Ngày soạn:** 16/11/2026 (UTC+07). **Trạng thái:** PREPARED / **NOT TESTED**. Đây là ca MỚI, khác A2-05 tắt công tắc Vị trí toàn hệ thống đã PASS theo video; không yêu cầu lặp ca đó.
+**Ngày soạn:** 16/11/2026 (UTC+07). **Trạng thái sau đối chiếu video:** **A2-05b PASS theo UI/video, có giới hạn**. Đây là ca thu hồi quyền riêng của ứng dụng, khác A2-05 tắt Vị trí toàn hệ thống đã PASS theo video; không cần lặp lại cả hai.
 
 **CẬP NHẬT BẰNG CHỨNG 16/11/2026, ~21:38–21:39 (UTC+07):** **A2-05b PASS THEO VIDEO** 51,93 giây đã được AI đối chiếu (revoke app permission → app stopped/owner none/fresh false/ACK false; khôi phục quyền không tự Start; người dùng bấm Start thủ công mới). Xem `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` mục 2E. **Chưa kiểm thử tất cả các race/OEM, APK installed hash chưa xác minh, Issue #2 OPEN.** Phần hướng dẫn dưới đây là kịch bản lưu tham chiếu, **không yêu cầu người dùng lặp lại ca đã PASS**. Video cuối có service active, cần Stop khi không thử.
 
@@ -43,4 +43,4 @@
 Gửi 3–4 ảnh **đã che**: (1) GPS nền trước revoke, (2) Android `Vị trí → Không cho phép`, (3) GPS nền sau revoke/khởi động lại, (4) GPS nền sau cấp lại quyền nhưng **trước** Start mới. Ghi:
 `A2-05b | PASS/FAIL/NOT TESTED (tự báo) | thời gian VN | app có bị Android đóng không | hiện tượng cụ thể | MIUI/HyperOS nếu biết | APK hash installed: UNVERIFIED (nếu chưa xác minh)`.
 
-**Ẩn tọa độ, địa chỉ, hành trình/khách, số điện thoại, IMEI/serial, thông báo riêng tư, tài khoản ngân hàng, keystore/token/API key.** Chỉ gửi trong chat đã che PII; repo Issue #2 chỉ ghi bản tóm tắt kỹ thuật sau khi AI xem bằng chứng. **Trạng thái hiện tại: NOT TESTED; Issue #2 OPEN.** Không thu cước hoặc merge PR/main.
+**Ẩn tọa độ, địa chỉ, hành trình/khách, số điện thoại, IMEI/serial, thông báo riêng tư, tài khoản ngân hàng, keystore/token/API key.** Chỉ gửi trong chat đã che PII; repo Issue #2 chỉ ghi bản tóm tắt kỹ thuật sau khi AI xem bằng chứng. **Trạng thái sau video: A2-05b PASS theo video (giới hạn UI); Issue #2 OPEN.** Không thu cước hoặc merge PR/main.
