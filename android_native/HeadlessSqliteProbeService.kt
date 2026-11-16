@@ -43,6 +43,33 @@ class HeadlessSqliteProbeService : Service() {
     inner class ProbeBinder : Binder() {
         fun isReady(): Boolean = ready
 
+        /**
+         * INSTRUMENTATION ONLY: park a native callback in the real Service
+         * callback fence, without dispatching Dart, SQLite, GNSS, or fares.
+         * A Service teardown must terminate it with SERVICE_DESTROYED.
+         */
+        fun debugHoldPendingCallbackForTest(
+            registered: (Long?) -> Unit,
+            callback: (Any?, String?) -> Unit
+        ) {
+            mainHandler.post {
+                val id = if (ready && !checkpointFaulted && ownsDebugWriter()) {
+                    callbackFence.register(callback)
+                } else null
+                registered(id)
+                if (id == null) callback(null, "DEBUG_SESSION_PAUSED")
+            }
+        }
+
+        /** Simulates a late old-engine reply only, never a production ACK. */
+        fun debugTryLateCallbackForTest(id: Long, completed: (Boolean) -> Unit) {
+            mainHandler.post {
+                completed(callbackFence.resolveIfWriterOwned(
+                    id, "DEBUG_LATE_REPLY_TEST_ONLY", null, ownsDebugWriter()
+                ))
+            }
+        }
+
         /** Instrumentation-only: never a production trip or GPS token. */
         fun debugWriterLeaseForTest(): Long? = debugWriterLease
 

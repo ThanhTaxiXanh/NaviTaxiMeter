@@ -476,4 +476,117 @@ class HeadlessSqliteProbeInstrumentedTest {
             context.unbindService(connection)
         }
     }
+
+    @Test
+    fun pendingNativeCallbackFailsOnServiceDestroyAndCannotReachReboundEngine() {
+        // Lifecycle/late-callback proof using a controlled native callback
+        // fence. No Dart checkpoint is forged, no GPS, money, or trip database.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val before = HeadlessSqliteProbeService.destructionCount()
+        val bound = CountDownLatch(1)
+        var binder: HeadlessSqliteProbeService.ProbeBinder? = null
+        val connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                binder = service as? HeadlessSqliteProbeService.ProbeBinder
+                bound.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                binder = null
+            }
+        }
+        assertTrue("DEBUG Service bind rejected", context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            connection, Context.BIND_AUTO_CREATE
+        ))
+        var oldBinder: HeadlessSqliteProbeService.ProbeBinder? = null
+        var oldLease = -1L
+        var oldRequest = -1L
+        val callbackDone = CountDownLatch(1)
+        val terminal = Collections.synchronizedList(mutableListOf<Pair<Any?, String?>>())
+        try {
+            assertTrue("DEBUG Service not bound", bound.await(20, TimeUnit.SECONDS))
+            val worker = binder ?: throw AssertionError("Missing DEBUG binder")
+            oldBinder = worker
+            var tries = 0
+            while (!worker.isReady() && tries++ < 150) Thread.sleep(100)
+            assertTrue("DEBUG Dart engine not ready", worker.isReady())
+            oldLease = worker.debugWriterLeaseForTest()
+                ?: throw AssertionError("Old writer lease missing")
+            val registered = CountDownLatch(1)
+            worker.debugHoldPendingCallbackForTest({ id ->
+                oldRequest = id ?: -1L
+                registered.countDown()
+            }, { value, error ->
+                terminal.add(value to error)
+                callbackDone.countDown()
+            })
+            assertTrue("Native callback registration stalled",
+                registered.await(20, TimeUnit.SECONDS))
+            assertTrue("No pending request registered", oldRequest > 0L)
+            assertTrue("ACK arrived before teardown", terminal.isEmpty())
+        } finally {
+            context.unbindService(connection)
+        }
+
+        var teardownTries = 0
+        while (HeadlessSqliteProbeService.destructionCount() <= before &&
+               teardownTries++ < 150) Thread.sleep(100)
+        assertTrue("Old Android Service was not destroyed",
+            HeadlessSqliteProbeService.destructionCount() > before)
+        assertTrue("Pending callback never failed on Service destroy",
+            callbackDone.await(10, TimeUnit.SECONDS))
+        assertEquals(listOf(null to "SERVICE_DESTROYED"), terminal)
+
+        val staleWorker = oldBinder ?: throw AssertionError("Old binder lost")
+        val late = CountDownLatch(1)
+        var lateAccepted: Boolean? = null
+        staleWorker.debugTryLateCallbackForTest(oldRequest) { accepted ->
+            lateAccepted = accepted
+            late.countDown()
+        }
+        assertTrue("Late old callback was not dispatched", late.await(10, TimeUnit.SECONDS))
+        assertEquals(false, lateAccepted)
+        assertEquals(1, terminal.size)
+
+        val rebound = CountDownLatch(1)
+        var secondBinder: HeadlessSqliteProbeService.ProbeBinder? = null
+        val secondConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                secondBinder = service as? HeadlessSqliteProbeService.ProbeBinder
+                rebound.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                secondBinder = null
+            }
+        }
+        assertTrue("Rebind after destroy failed", context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            secondConnection, Context.BIND_AUTO_CREATE
+        ))
+        try {
+            assertTrue("New Android Service not bound", rebound.await(20, TimeUnit.SECONDS))
+            val worker = secondBinder ?: throw AssertionError("Rebound binder missing")
+            var tries = 0
+            while (!worker.isReady() && tries++ < 150) Thread.sleep(100)
+            assertTrue("New Dart engine not ready", worker.isReady())
+            val newLease = worker.debugWriterLeaseForTest()
+                ?: throw AssertionError("New writer lease missing")
+            assertTrue("Old writer lease reused", newLease > oldLease)
+
+            val veryLate = CountDownLatch(1)
+            var staleDelivered: Boolean? = null
+            staleWorker.debugTryLateCallbackForTest(oldRequest) { delivered ->
+                staleDelivered = delivered
+                veryLate.countDown()
+            }
+            assertTrue("Old binder did not respond after rebind",
+                veryLate.await(10, TimeUnit.SECONDS))
+            assertEquals(false, staleDelivered)
+            assertEquals("Old ACK was delivered to the new engine", 1, terminal.size)
+            assertNull("Third DEBUG writer obtained a lease",
+                DebugWriterOwnershipRegistry.claim())
+        } finally {
+            context.unbindService(secondConnection)
+        }
+    }
 }

@@ -13,7 +13,11 @@ EXPECTED_CLASS = "vn.navitaximeter.HeadlessSqliteProbeInstrumentedTest"
 EXPECTED_METHOD = "boundHeadlessEngineCanOpenSqfliteAndReadCommittedProbe"
 EXPECTED_DEBUG_METHOD = "realKotlinToHeadlessDartDebugIpcAcksOnlyAfterSqliteReadback"
 EXPECTED_LEASE_METHOD = "competingWriterLeaseDeniesEngineUntilTeardownAndExplicitRebind"
-EXPECTED_METHODS = (EXPECTED_METHOD, EXPECTED_DEBUG_METHOD, EXPECTED_LEASE_METHOD)
+EXPECTED_LATE_METHOD = "pendingNativeCallbackFailsOnServiceDestroyAndCannotReachReboundEngine"
+EXPECTED_METHODS = (
+    EXPECTED_METHOD, EXPECTED_DEBUG_METHOD, EXPECTED_LEASE_METHOD,
+    EXPECTED_LATE_METHOD,
+)
 
 
 def verify(results_dir: Path) -> int:
@@ -36,12 +40,12 @@ def verify(results_dir: Path) -> int:
                 raise ValueError("Headless Android test failed/skipped: " + str(report))
     if any(count != 1 for count in executed.values()):
         raise ValueError(
-            "Require exactly one executed result for ALL THREE Android debug "
+            "Require exactly one executed result for ALL FOUR Android debug "
             + "probe methods, found " + str(executed)
         )
-    print("PASS: THREE Android emulator instrumented methods executed: "
+    print("PASS: FOUR Android emulator instrumented methods executed: "
           "headless SQLite counter, Kotlin-Dart DEBUG checkpoint ACK, "
-          "and contended writer Service lifecycle")
+          "contended writer Service lifecycle, and stale ACK after teardown/rebind")
     print("WARNING: NO production SQLite writer, GNSS or passenger-fare proof")
     return sum(executed.values())
 
