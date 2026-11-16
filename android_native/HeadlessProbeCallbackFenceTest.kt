@@ -84,4 +84,37 @@ class HeadlessProbeCallbackFenceTest {
         assertEquals(listOf("SERVICE_DESTROYED", null), terminalErrors)
         fence.close()
     }
+
+    @Test fun delayedValidAckCannotEscapeAfterWriterLeaseIsLost() {
+        val fence = HeadlessProbeCallbackFence()
+        fence.open()
+        val replies = mutableListOf<Pair<Any?, String?>>()
+        val id = fence.register { value, error -> replies.add(value to error) }!!
+        // Native samples current lease after the Dart MethodChannel callback.
+        assertTrue(fence.resolveIfWriterOwned(
+            id, mapOf("checkpointId" to "committed-but-stale"), null, false
+        ))
+        assertEquals(listOf(null to "DEBUG_WRITER_LEASE_LOST"), replies)
+        assertFalse(fence.resolveIfWriterOwned(id, "late-duplicate-ack", null, true))
+        fence.close()
+        assertEquals(1, replies.size)
+    }
+
+    @Test fun stillOwnedAckCanCompleteOnlyItsOwnPendingRequest() {
+        val fence = HeadlessProbeCallbackFence()
+        fence.open()
+        val replies = mutableListOf<Pair<Any?, String?>>()
+        val old = fence.register { value, error -> replies.add(value to error) }!!
+        assertTrue(fence.resolveIfWriterOwned(old, "committed-ack", null, true))
+        fence.close()
+        fence.open()
+        val newer = fence.register { value, error -> replies.add(value to error) }!!
+        assertFalse(fence.resolveIfWriterOwned(old, "stale-ack", null, true))
+        assertTrue(fence.resolveIfWriterOwned(newer, null, null, false))
+        assertEquals(
+            listOf("committed-ack" to null, null to "DEBUG_WRITER_LEASE_LOST"),
+            replies
+        )
+        fence.close()
+    }
 }

@@ -29,6 +29,19 @@ internal class HeadlessProbeCallbackFence {
         return true
     }
 
+    /**
+     * Only a still-owned DEBUG writer may expose a result, even if an old Dart
+     * MethodChannel callback arrives after the lease has been lost/replaced.
+     * The caller must sample ownership at callback delivery, NOT dispatch.
+     */
+    fun resolveIfWriterOwned(
+        id: Long, result: Any?, error: String?, ownsWriterAtDelivery: Boolean
+    ): Boolean = if (ownsWriterAtDelivery) {
+        resolve(id, result, error)
+    } else {
+        resolve(id, null, "DEBUG_WRITER_LEASE_LOST")
+    }
+
     fun close() {
         accepting = false
         val unresolved = pending.values.toList()

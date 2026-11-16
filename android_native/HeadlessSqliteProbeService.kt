@@ -37,6 +37,9 @@ class HeadlessSqliteProbeService : Service() {
     private var engine: FlutterEngine? = null
     private var channel: MethodChannel? = null
 
+    private fun ownsDebugWriter(): Boolean =
+        debugWriterLease?.let { DebugWriterOwnershipRegistry.matches(it) } == true
+
     inner class ProbeBinder : Binder() {
         fun isReady(): Boolean = ready
 
@@ -60,9 +63,7 @@ class HeadlessSqliteProbeService : Service() {
                     callback(null, "INVALID_DEBUG_PROPOSAL")
                     return@post
                 }
-                if (checkpointFaulted ||
-                    debugWriterLease?.let { DebugWriterOwnershipRegistry.matches(it) } != true
-                ) {
+                if (checkpointFaulted || !ownsDebugWriter()) {
                     callback(null, "DEBUG_SESSION_PAUSED")
                     return@post
                 }
@@ -108,12 +109,17 @@ class HeadlessSqliteProbeService : Service() {
                                         (ack["checkpointId"] as? String)?.isNotBlank() == true &&
                                         ack["probeOnly"] == true &&
                                         ack["passengerFareEnabled"] == false
-                                    if (!valid) checkpointFaulted = true
-                                    callbackFence.resolve(
+                                    // A correctly formatted post-COMMIT ACK is
+                                    // still stale if Service lost its writer lease
+                                    // between dispatch and delivery.
+                                    val ownsAtDelivery = ownsDebugWriter()
+                                    if (!valid || !ownsAtDelivery) checkpointFaulted = true
+                                    val accepted = valid && !checkpointFaulted
+                                    callbackFence.resolveIfWriterOwned(
                                         id,
-                                        if (valid && !checkpointFaulted) result else null,
-                                        if (valid && !checkpointFaulted) null
-                                        else "DEBUG_ACK_UNVERIFIED_OR_PAUSED"
+                                        if (accepted) result else null,
+                                        if (accepted) null else "DEBUG_ACK_UNVERIFIED_OR_PAUSED",
+                                        ownsAtDelivery
                                     )
                                 }
                             }
@@ -142,6 +148,10 @@ class HeadlessSqliteProbeService : Service() {
 
         fun writeAndRead(callback: (Any?, String?) -> Unit) {
             mainHandler.post {
+                if (checkpointFaulted || !ownsDebugWriter()) {
+                    callback(null, "DEBUG_SESSION_PAUSED")
+                    return@post
+                }
                 val endpoint = channel
                 if (!ready || endpoint == null) {
                     callback(null, "DART_WORKER_NOT_READY")
@@ -159,7 +169,14 @@ class HeadlessSqliteProbeService : Service() {
                         object : MethodChannel.Result {
                             override fun success(result: Any?) {
                                 mainHandler.post {
-                                    callbackFence.resolve(requestId, result, null)
+                                    val ownsAtDelivery = ownsDebugWriter()
+                                    if (!ownsAtDelivery) checkpointFaulted = true
+                                    callbackFence.resolveIfWriterOwned(
+                                        requestId,
+                                        if (!checkpointFaulted) result else null,
+                                        if (!checkpointFaulted) null else "DEBUG_SESSION_PAUSED",
+                                        ownsAtDelivery
+                                    )
                                 }
                             }
                             override fun error(
