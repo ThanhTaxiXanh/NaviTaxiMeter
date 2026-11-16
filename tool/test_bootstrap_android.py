@@ -49,10 +49,17 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('FlutterEngine(applicationContext)', service)
         self.assertIn('writeAndRead', device_test)
         self.assertIn('callbackFence.close()', service)
-        self.assertIn('callbackFence.resolve(requestId, result, null)', service)
+        # Both MethodChannel success paths must verify the live DEBUG writer
+        # lease when the callback arrives, not merely before dispatch.
+        self.assertEqual(service.count('callbackFence.resolveIfWriterOwned('), 2)
+        self.assertIn('val ownsAtDelivery = ownsDebugWriter()', service)
+        self.assertIn('if (checkpointFaulted || !ownsDebugWriter())', service)
+        self.assertNotIn('callbackFence.resolve(requestId, result, null)', service)
         fence_test = (root / 'android_native/HeadlessProbeCallbackFenceTest.kt').read_text()
         self.assertIn('destroyFailsPendingRequestAndRejectsLateSuccess', fence_test)
         self.assertIn('stopFailsAllPendingWithoutDoubleCompleting', fence_test)
+        self.assertIn('delayedValidAckCannotEscapeAfterWriterLeaseIsLost', fence_test)
+        self.assertIn('stillOwnedAckCanCompleteOnlyItsOwnPendingRequest', fence_test)
 
     def test_location_owner_contract_sources(self):
         root = Path(__file__).resolve().parents[1] / "android_native"
