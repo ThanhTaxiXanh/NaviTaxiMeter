@@ -1,3 +1,15 @@
+# CHU KỲ 7 — LƯỢT 2/7 · KẾT QUẢ XIAOMI ANDROID 13 THẬT (16/11/2026)
+
+- **AI_REPLY_COUNT = 2/7** sau lượt này. Lượt 7/7 bắt buộc bàn giao đầy đủ 3.1–3.10 + Phụ lục A. Không reset trong cùng chat.
+- Chủ dự án gửi **7 ảnh chụp màn hình** từ Redmi Note 12 Pro/Android 13 (model/OS do người dùng xác nhận). Phân tích và lưu **chỉ bản ghi văn bản đã lược dữ liệu riêng tư** vào `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` tại code-doc commit `214e202855d9076e5dda0fe8e9c59f66a151c9cf`, đồng thời chú giải Issue #2. Không upload ảnh/raw GPS lên GitHub.
+- **Physical UI PASS theo ảnh A2-01**: Start native active, owner `native_safety`, ACK true, `GPS mới: Có`, `trusted_gps`, acceptedCount 7→9, tuổi fix 2842/2835ms (13:58). **Physical UI PASS phần A2-03 Stop từ app**: stopped, fresh false, owner none, ACK false (14:00). **A2-03 Stop notification, A2-02, A2-04, A2-05, A2-06 vẫn NOT TESTED**. GNSS trust ở đây là tự công bố bằng phần mềm, không phải độc lập đo km/antennas/OEM longevity.
+- Ảnh settings: `Chỉ cho phép khi dùng ứng dụng`, `Sử dụng vị trí chính xác` bật, thông báo bật, pin ứng dụng `Tiết kiệm pin (kiến nghị)`; chưa có MIUI build. Bản APK đã xác minh hash từ ZIP gốc, không đo hash cài trên điện thoại.
+- CI trên previous HEAD docs `7c413a9281a3c2c00eee3fc4580d074a43f035e5`: Foundation PR `43817918741` **SUCCESS**, Zero Cost PR `43817918803` **SUCCESS**. Các docs commits mới cần kiểm lại CI theo HEAD nếu muốn nhận thành công cho HEAD mới.
+- Không thay đổi product code, DB, APK, schema, paid APIs; PR #1 vẫn DRAFT, Issue #2 OPEN, Issue #3 production NOT IMPLEMENTED. Chỉ ghi `feature/navitaximeter-foundation`.
+- **Bước tiếp theo**: hướng dẫn người dùng A2-02 native/Preview GPS_BUSY trước, cần chụp lỗi Preview và quay lại trạng thái native; nhận ảnh, so sánh, ghi PASS/FAIL/NOT TESTED. Sau đó A2-03 notification Stop, A2-04 Home/lock, A2-05 revoke. Dừng khi lỗi hoặc thấy hai owner hoạt động; không test khi đang chở khách.
+
+---
+
 # CHU KỲ 7 — LƯỢT 1/7 · TIẾP QUẢN 16/11/2026 (XIAOMI ANDROID 13)
 
 - Trò chuyện mới reset AI_REPLY_COUNT=0; sau lượt trả lời hiện tại **AI_REPLY_COUNT=1/7**, lượt **7/7** phải viết bản bàn giao đầy đủ mục 3.1–3.10 và Phụ lục A.
