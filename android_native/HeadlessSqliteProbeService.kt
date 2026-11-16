@@ -32,6 +32,7 @@ class HeadlessSqliteProbeService : Service() {
     private val callbackFence = HeadlessProbeCallbackFence()
     @Volatile private var ready = false
     private var checkpointFaulted = false
+    private var debugWriterLease: Long? = null
     private var activeDebugFence: String? = null
     private var engine: FlutterEngine? = null
     private var channel: MethodChannel? = null
@@ -56,7 +57,9 @@ class HeadlessSqliteProbeService : Service() {
                     callback(null, "INVALID_DEBUG_PROPOSAL")
                     return@post
                 }
-                if (checkpointFaulted) {
+                if (checkpointFaulted ||
+                    debugWriterLease?.let { DebugWriterOwnershipRegistry.matches(it) } != true
+                ) {
                     callback(null, "DEBUG_SESSION_PAUSED")
                     return@post
                 }
@@ -183,6 +186,13 @@ class HeadlessSqliteProbeService : Service() {
     override fun onCreate() {
         super.onCreate()
         callbackFence.open()
+        // A second headless engine in this process must never create a
+        // competing SQLite writer. Refuse to launch Dart when lease is held.
+        debugWriterLease = DebugWriterOwnershipRegistry.claim()
+        if (debugWriterLease == null) {
+            checkpointFaulted = true
+            return
+        }
         val loader = FlutterInjector.instance().flutterLoader()
         loader.startInitialization(applicationContext)
         loader.ensureInitializationComplete(applicationContext, null)
@@ -215,6 +225,8 @@ class HeadlessSqliteProbeService : Service() {
         channel = null
         engine?.destroy()
         engine = null
+        debugWriterLease?.let { DebugWriterOwnershipRegistry.release(it) }
+        debugWriterLease = null
         destroyedCount += 1
         super.onDestroy()
     }

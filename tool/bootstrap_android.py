@@ -25,10 +25,12 @@ ANDROID_TEST_DEPS = (
 NATIVE_SOURCES = (
     "MainActivity.kt", "LocationSafetyService.kt",
     "LocationOwnerRegistry.kt", "TripCheckpointProtocol.kt",
+    "DebugWriterOwnershipRegistry.kt",
 )
 JVM_TEST_SOURCES = (
     "LocationOwnerRegistryTest.kt", "TripCheckpointProtocolTest.kt",
     "HeadlessProbeCallbackFenceTest.kt",
+    "DebugWriterOwnershipRegistryTest.kt",
 )
 DEBUG_SOURCES = ("HeadlessSqliteProbeService.kt", "HeadlessProbeCallbackFence.kt")
 ANDROID_TEST_SOURCES = ("HeadlessSqliteProbeInstrumentedTest.kt",)
