@@ -1,3 +1,16 @@
+# CHU KỲ 7 — LƯỢT 6/7 · XIAOMI A2-04 HOME/LOCK UI EVIDENCE (16/11/2026)
+
+- Sau lượt này **AI_REPLY_COUNT=6/7**. **LƯỢT AI TIẾP THEO LÀ 7/7: PHẢI lập BẢN BÀN GIAO đầy đủ 3.1–3.10 + PHỤ LỤC A quy tắc test điện thoại và cập nhật state; KHÔNG ưu tiên thêm feature trước bàn giao.**
+- Chủ dự án gửi 3 ảnh từ Xiaomi Redmi Note 12 Pro, Android 13, trước/sau quy trình A2-04 đã hướng dẫn: 15:17 `native_safety` active, GPS fresh, trusted_gps, ACK confirmed, accepted 1, fix age 2942ms; 15:19 vẫn active/ACK valid, accepted 33, fix age 3559ms; sau Stop 15:19 stopped, owner none, ACK false, lịch sử accepted 36.
+- **A2-04 PASS về trạng thái UI trước/sau**, có **điều kiện** người dùng đã bấm Home và khóa màn ≥60 giây theo hướng dẫn. Ảnh không tự chứng minh thao tác/duration hoặc dịch vụ liên tục tại mọi thời điểm khóa. Không chứng minh Doze/kill/reboot, trích xuất/cự ly GNSS độc lập, production.
+- Bằng chứng chỉ văn bản bỏ PII ở `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md`, commit `8d2a1d9b92e799076895020ee0f35b5741a86c05`, comment Issue #2. Ảnh riêng tư không upload GitHub.
+- Issue #2 hiện: A2-01 Start/ACK physical UI PASS; A2-02 GPS_BUSY/sau release Preview PASS; A2-03 Stop UI + notification PASS; A2-04 PASS theo ảnh trước/sau và điều kiện Home/lock 60 giây; **A2-05 revoke/provider NOT TESTED**, **A2-06 Lab NOT TESTED**, các ca rộng khác chưa test. Issue #2 vẫn OPEN.
+- Mốc code SHA `db4dcab34432c3a1c5a31903e30b0d0ff9b31def` Foundation PR run `43826864218` SUCCESS, Zero Cost PR `43826864300` SUCCESS; DEBUG artifact ID `14206464796`. Code fix giữ thông báo GPS_BUSY đã chạy CI. HEAD docs trước lượt này `0176d2fee137fe8556c53e43017ff96b59cca9fc` ZeroCost `43829413107` SUCCESS, Foundation `43829413019` IN PROGRESS lúc đối chiếu; HEAD mới do docs commits cần verify CI theo exact SHA, không nhận PASS cũ thay cho HEAD docs.
+- Bước tới sau **bàn giao lượt 7**: kiểm A2-05 trên Xiaomi, hướng dẫn các nút thật, chụp trạng thái before/after khi tắt Vị trí/thu hồi quyền, kỳ vọng fresh false/ACK invalid hoặc service stop, manual Stop/Start khi restore. Không chạm SQLite/thu cước. Đánh giá rủi ro OEM + pin, mở issue riêng nếu thất bại.
+- Quy tắc cứng giữ nguyên: chỉ branch `feature/navitaximeter-foundation`, PR #1 OPEN/DRAFT, main/TTX READ-ONLY, không merge/force-push, không xóa/migrate app DB v3 hoặc confirmed tariff prefs, không Paid API/Cloud Billing, không thu cước khách. Issue #3 production single GNSS owner + one durable SQLite writer **NOT IMPLEMENTED**.
+
+---
+
 # CHU KỲ 7 — LƯỢT 5/7 · A2-02 XIAOMI GPS_BUSY PASS (16/11/2026)
 
 - Sau lượt phản hồi này: **AI_REPLY_COUNT=5/7**, bàn giao đầy đủ mục 3.1–3.10 + Phụ lục A bắt buộc ở lượt **7/7**; không reset khi chưa đổi chat.
