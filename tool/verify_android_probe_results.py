@@ -12,7 +12,8 @@ import xml.etree.ElementTree as ET
 EXPECTED_CLASS = "vn.navitaximeter.HeadlessSqliteProbeInstrumentedTest"
 EXPECTED_METHOD = "boundHeadlessEngineCanOpenSqfliteAndReadCommittedProbe"
 EXPECTED_DEBUG_METHOD = "realKotlinToHeadlessDartDebugIpcAcksOnlyAfterSqliteReadback"
-EXPECTED_METHODS = (EXPECTED_METHOD, EXPECTED_DEBUG_METHOD)
+EXPECTED_LEASE_METHOD = "competingWriterLeaseDeniesEngineUntilTeardownAndExplicitRebind"
+EXPECTED_METHODS = (EXPECTED_METHOD, EXPECTED_DEBUG_METHOD, EXPECTED_LEASE_METHOD)
 
 
 def verify(results_dir: Path) -> int:
@@ -35,11 +36,12 @@ def verify(results_dir: Path) -> int:
                 raise ValueError("Headless Android test failed/skipped: " + str(report))
     if any(count != 1 for count in executed.values()):
         raise ValueError(
-            "Require exactly one executed result for BOTH Android debug "
+            "Require exactly one executed result for ALL THREE Android debug "
             + "probe methods, found " + str(executed)
         )
-    print("PASS: TWO Android emulator instrumented methods executed: "
-          "headless SQLite counter and Kotlin-Dart DEBUG typed checkpoint ACK")
+    print("PASS: THREE Android emulator instrumented methods executed: "
+          "headless SQLite counter, Kotlin-Dart DEBUG checkpoint ACK, "
+          "and contended writer Service lifecycle")
     print("WARNING: NO production SQLite writer, GNSS or passenger-fare proof")
     return sum(executed.values())
 
