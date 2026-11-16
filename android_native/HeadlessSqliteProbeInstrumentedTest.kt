@@ -193,6 +193,23 @@ class HeadlessSqliteProbeInstrumentedTest {
             while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
             assertTrue("Dart debug checkpoint worker not ready", worker.isReady())
 
+            // Reject malformed wire identities at the native boundary without
+            // touching Dart or poisoning a valid, not-yet-started session.
+            val invalidDone = CountDownLatch(2)
+            val invalidErrors = Collections.synchronizedList(mutableListOf<String>())
+            worker.debugCheckpoint("NOT_A_DEBUG_SESSION", 71L, 0L, payload) { _, error ->
+                invalidErrors.add(error ?: "UNEXPECTED_INVALID_SESSION_ACK")
+                invalidDone.countDown()
+            }
+            worker.debugCheckpoint(session, 71L, 0L, "bad-hash") { _, error ->
+                invalidErrors.add(error ?: "UNEXPECTED_INVALID_HASH_ACK")
+                invalidDone.countDown()
+            }
+            assertTrue("Malformed native proposals timed out",
+                invalidDone.await(30, TimeUnit.SECONDS))
+            assertEquals(listOf("INVALID_DEBUG_PROPOSAL", "INVALID_DEBUG_PROPOSAL"),
+                invalidErrors.sorted())
+
             // Eight actual Kotlin MethodChannel requests contend for the one
             // serialized Dart sqflite writer. ACK requires COMMIT + reopen.
             val done = CountDownLatch(8)
@@ -320,6 +337,20 @@ class HeadlessSqliteProbeInstrumentedTest {
             assertTrue(finished.await(30, TimeUnit.SECONDS))
             assertNotNull("New worker must reject automatic DEBUG recovery",
                 recoveryError)
+
+            // Even a different, apparently fresh session cannot bypass a
+            // failed restart readback by switching the session identity.
+            val freshDone = CountDownLatch(1)
+            var freshError: String? = null
+            worker.debugCheckpoint(
+                "DBG_NEW_${android.os.SystemClock.elapsedRealtimeNanos()}",
+                1L, 0L, payload
+            ) { _, error ->
+                freshError = error
+                freshDone.countDown()
+            }
+            assertTrue(freshDone.await(30, TimeUnit.SECONDS))
+            assertEquals("DEBUG_SESSION_PAUSED", freshError)
         } finally {
             context.unbindService(secondConnection)
         }
