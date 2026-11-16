@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi trip-recorder"
+  short_description: "Ghi nhận chuyến, route segment, checkpoint và kết thúc an toàn."

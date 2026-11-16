@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi backup-recovery"
+  short_description: "Thiết kế sao lưu và khôi phục toàn bộ chuyến đi/cấu hình không mất dữ liệu."

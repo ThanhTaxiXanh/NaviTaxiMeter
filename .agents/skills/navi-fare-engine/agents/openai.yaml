@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi fare-engine"
+  short_description: "Kiểm định công thức cước theo bậc, cước chờ, BOT và chốt giá."

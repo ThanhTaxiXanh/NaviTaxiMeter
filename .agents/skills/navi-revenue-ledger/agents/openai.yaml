@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi revenue-ledger"
+  short_description: "Đối soát doanh thu với hóa đơn và trạng thái chuyến SQLite."

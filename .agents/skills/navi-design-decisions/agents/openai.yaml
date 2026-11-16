@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi design-decisions"
+  short_description: "Ghi nhận ADR và quyết định kỹ thuật chưa/chính thức được chấp thuận."

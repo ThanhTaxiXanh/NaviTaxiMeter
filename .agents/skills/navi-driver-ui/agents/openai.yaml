@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi driver-ui"
+  short_description: "Thiết kế UI tiếng Việt rõ ràng, ít thao tác cho tài xế taxi."

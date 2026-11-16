@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi google-map-driving"
+  short_description: "Đánh giá bản đồ lái xe 2D/3D, camera, tòa nhà và Google Maps."

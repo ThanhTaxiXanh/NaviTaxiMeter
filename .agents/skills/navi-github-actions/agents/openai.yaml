@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi github-actions"
+  short_description: "Debug log GitHub Actions và xác minh bản build theo commit SHA."

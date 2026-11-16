@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi code-commander"
+  short_description: "Điều phối workflow lập trình NaviTaxiMeter, chọn kỹ năng đúng theo nhiệm vụ."

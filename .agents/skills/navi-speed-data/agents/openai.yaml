@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi speed-data"
+  short_description: "Kiểm chứng nguồn dữ liệu biển báo và giới hạn tốc độ hợp pháp."

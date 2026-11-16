@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi secret-policy"
+  short_description: "Phát hiện rò rỉ key, signing, tài khoản ngân hàng và vị trí."

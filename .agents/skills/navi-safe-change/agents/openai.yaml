@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi safe-change"
+  short_description: "Triển khai chỉnh sửa nhỏ có rollback và kiểm chứng rõ ràng."

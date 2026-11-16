@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi release-signing"
+  short_description: "Kiểm định version, Android applicationId, chữ ký APK và phát hành."

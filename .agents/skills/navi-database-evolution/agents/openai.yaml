@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi database-evolution"
+  short_description: "Kiểm tra SQLite v3, migration và hợp đồng lưu dữ liệu bền vững."
