@@ -27,6 +27,7 @@ class HeadlessSqliteProbeInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val destroyedBefore = HeadlessSqliteProbeService.destructionCount()
         var lastCommittedProbeCount = -1
+        var firstWriterLease = -1L
         val serviceReady = CountDownLatch(1)
         var binder: HeadlessSqliteProbeService.ProbeBinder? = null
         val connection = object : ServiceConnection {
@@ -53,9 +54,8 @@ class HeadlessSqliteProbeInstrumentedTest {
                 Thread.sleep(100)
             }
             assertTrue("Headless Dart entrypoint never ACKed ready", worker?.isReady() == true)
-            val firstWriterLease = worker?.debugWriterLeaseForTest()
-            assertNotNull("First service has no writer lease", firstWriterLease)
-            assertTrue("First writer lease must be positive", firstWriterLease!! > 0L)
+            firstWriterLease = worker?.debugWriterLeaseForTest() ?: -1L
+            assertTrue("First service has no positive writer lease", firstWriterLease > 0L)
             val finished = CountDownLatch(1)
             var result: Any? = null
             var error: String? = null
