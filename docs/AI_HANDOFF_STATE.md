@@ -1,3 +1,15 @@
+# CHU KỲ 8 — LƯỢT 6/7 · HƯỚNG DẪN A2-07A STOP NHANH; STALE TOKEN KHÔNG THỬ ĐƯỢC QUA UI (17/11/2026)
+
+- **AI_REPLY_COUNT=6/7 sau phản hồi này. CẢNH BÁO: LƯỢT KẾ TIẾP 7/7 BẮT BUỘC TẠO BẢN BÀN GIAO ĐỘC LẬP 3.1–3.10 + PHỤ LỤC A/C, cập nhật state.** Không mở tính năng mới trước bàn giao; không reset trong cùng chat.
+- Người dùng nhắc rằng AI phải hướng dẫn **từng nút/mỗi bước** cho kiểm thử điện thoại, không chỉ nói tên ca; đã thừa nhận và khắc phục bằng runbook thật. `docs/ISSUE_2_XIAOMI_ANDROID13_A2_07_QUICK_STOP_AND_STALE_NOTIFICATION_PLAN_2026-11-17.md`, commit `a590ecc686320d86eb376e0fe5b786de0166be79`, Issue #2 comment ID `6933156925`.
+- **A2-07A Stop ngay sau ACK** chuẩn bị trên Redmi Note 12 Pro Android 13, **NOT TESTED**. UI hiện có `Bật GPS nền thử`, dialog `Bật dịch vụ thử`, `Dừng GPS nền thử`, `Đọc lại trạng thái`, `GPS thử` → `Bắt đầu xem GPS` / `Dừng GPS thử`. Cần precise ON (A2-05c video cuối để OFF), bật notification, GPS thử không được chạy trước. Ghi một video continuous đã che PII, kỳ vọng stopped/owner none/ACK false sau Stop, Preview có thể claim GPS sau teardown, không tự restart.
+- **KHÔNG THỂ thử pre-ACK Stop bằng UI** vì `_busy` khóa nút Stop trong `_start`. **KHÔNG THỂ thật sự gửi lại stale notification STOP của phiên cũ bằng UI**; phải có harness DEBUG/instrumentation test token, NOT IMPLEMENTED/NOT TESTED. A2-03 Stop từ notification của phiên hiện tại đã PASS theo ảnh, không nhầm với stale stop.
+- Mốc HEAD trước docs runbook `620923f97a4dfd9b0fdbe7fcefb76a63a074a9aa`: Zero Cost PR [43982866851](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43982866851) **SUCCESS**, Foundation PR [43982866744](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43982866744) **IN PROGRESS** lúc kiểm, không tuyên bố PASS chưa có. HEAD mới sau docs/state cần kiểm CI đúng SHA.
+- Hạn chế cứng: chỉ branch `feature/navitaximeter-foundation`, PR #1 Draft, Issue #2 OPEN, Issue #3 production GNSS TripLocationService + one durable app writer NOT IMPLEMENTED, no paid APIs/Billing, no commercial passenger fare, SQLite schema v3 + prefs preserved, no main merge/force push. A2-05c đã PASS theo video có giới hạn, không bắt lặp; A2-07A chỉ là kế hoạch.
+- **Điểm tiếp nối:** Sau khi lượt 7/7 hoàn tất bàn giao, tiếp nhận video A2-07A nếu người dùng đã thực hiện; phân biệt UI test với pending ACK/stale PendingIntent harness chưa có. Nếu chủ dự án muốn kiểm stale token thật, lập review test-only design trước khi code, không bắt user làm thao tác bất khả thi.
+
+---
+
 # CHU KỲ 8 — LƯỢT 5/7 · XIAOMI A2-05c VIDEO TRUSTED→APPROXIMATE PASS (17/11/2026, UTC+07)
 
 - **AI_REPLY_COUNT=5/7 sau phản hồi này** trong chat hiện tại; **lượt 7/7** bắt buộc bàn giao hồ sơ độc lập 3.1–3.10 cùng phụ lục A/C. Không reset nếu vẫn cùng chat.
