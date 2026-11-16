@@ -51,7 +51,11 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('callbackFence.close()', service)
         # Both MethodChannel success paths must verify the live DEBUG writer
         # lease when the callback arrives, not merely before dispatch.
-        self.assertEqual(service.count('callbackFence.resolveIfWriterOwned('), 2)
+        # Two live MethodChannel ACK paths plus one TEST-ONLY late-callback hook.
+        self.assertEqual(service.count('callbackFence.resolveIfWriterOwned('), 3)
+        self.assertEqual(service.count('val ownsAtDelivery = ownsDebugWriter()'), 2)
+        self.assertIn('DEBUG_LATE_REPLY_TEST_ONLY', service)
+        self.assertIn('debugHoldPendingCallbackForTest', service)
         self.assertIn('val ownsAtDelivery = ownsDebugWriter()', service)
         self.assertIn('if (checkpointFaulted || !ownsDebugWriter())', service)
         self.assertNotIn('callbackFence.resolve(requestId, result, null)', service)
