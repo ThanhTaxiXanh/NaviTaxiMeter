@@ -62,4 +62,26 @@ class HeadlessProbeCallbackFenceTest {
         fence.close()
         assertEquals(listOf("SERVICE_DESTROYED", null), reports)
     }
+
+    @Test fun throwingObserverCannotInterruptTeardownOrResurrectLateCallback() {
+        val fence = HeadlessProbeCallbackFence()
+        fence.open()
+        val terminalErrors = mutableListOf<String?>()
+        val first = fence.register { _, _ ->
+            throw IllegalStateException("Simulated observer failure during onDestroy")
+        }!!
+        val second = fence.register { _, error -> terminalErrors.add(error) }!!
+        fence.close()
+        assertEquals(listOf("SERVICE_DESTROYED"), terminalErrors)
+        assertFalse(fence.resolve(first, "late-ack", null))
+        assertFalse(fence.resolve(second, "late-ack", null))
+        assertNull(fence.register { _, _ -> })
+        // A distinct later worker can only receive its own new callback.
+        fence.open()
+        val third = fence.register { _, error -> terminalErrors.add(error) }!!
+        assertTrue(third > second)
+        assertTrue(fence.resolve(third, "new-session", null))
+        assertEquals(listOf("SERVICE_DESTROYED", null), terminalErrors)
+        fence.close()
+    }
 }

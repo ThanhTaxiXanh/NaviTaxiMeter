@@ -33,6 +33,14 @@ internal class HeadlessProbeCallbackFence {
         accepting = false
         val unresolved = pending.values.toList()
         pending.clear()
-        unresolved.forEach { it(null, "SERVICE_DESTROYED") }
+        unresolved.forEach { callback ->
+            try {
+                callback(null, "SERVICE_DESTROYED")
+            } catch (_: RuntimeException) {
+                // A broken observer must not abort service teardown or keep
+                // another pending caller from receiving its terminal failure.
+                // All request IDs were already invalidated above.
+            }
+        }
     }
 }
