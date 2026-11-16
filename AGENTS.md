@@ -13,6 +13,8 @@ This file applies to code agents operating on this repository. Canonical app: **
 - User can work entirely from iPhone. Use connected GitHub tools, Draft PR, and GitHub Actions; do not require a desktop as the only path.
 
 ## Skills
+**Mandatory for every source-code development task:** read `AGENTS.md`, inspect the latest handoff (not just a hardcoded historical filename), then read `.agents/skills/navi-code-commander/SKILL.md` to select and read only relevant task-specific `navi-*` skills. Do not load all 29 skills. Every change must preserve data/privacy, authorized GitHub branch and Draft PR, tests and exact-SHA CI evidence, and Zero Paid API. See hard rule §10 in `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`.
+
 Start with `.agents/skills/navi-code-commander/SKILL.md`, then load only the needed `navi-*` skill. Refer to `project/NaviTaxiMeter/README-INTEGRATION.md` for the source-of-truth hierarchy and mapping from skills to live code.
 
 ## Evidence and handoff

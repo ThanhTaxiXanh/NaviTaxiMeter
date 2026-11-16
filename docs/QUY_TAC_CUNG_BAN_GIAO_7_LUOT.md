@@ -303,3 +303,17 @@ Khi người dùng đưa bản bàn giao vào cuộc trò chuyện mới, AI ph�
 **Mẫu tối thiểu cho mỗi yêu cầu test điện thoại:** `Mã ca | Mục tiêu | APK/SHA | Chuẩn bị | Bước 1,2,3... | PASS khi | FAIL khi | Bằng chứng cần chụp | Cách gửi AI | Kết quả PASS/FAIL/NOT TESTED`.
 
 **Quy tắc này không cấp phép triển khai production:** vẫn giữ Zero Paid API, single GNSS owner, fail-closed/PAUSED, không Billing, không thương mại và không merge main.
+---
+
+## 10. QUY TẮC CỨNG: ĐỌC AGENTS.md, BÀN GIAO VÀ CHỌN SKILL THEO NHIỆM VỤ
+
+**Ngày bổ sung:** 16/11/2026. **Mức độ:** BẮT BUỘC cho mọi nhiệm vụ phát triển mã nguồn NaviTaxiMeter.
+
+1. **Trước mọi nhiệm vụ phát triển mã nguồn**, đọc `AGENTS.md` tại gốc repository NaviTaxiMeter; kiểm tra **hồ sơ bàn giao mới nhất** và đối chiếu HEAD/CI thực tế, không dựa vào bản bàn giao cũ khi repository đã thay đổi.
+2. Sau đó đọc `.agents/skills/navi-code-commander/SKILL.md` để xác định và chọn đúng kỹ năng chuyên môn `navi-*` cho nhiệm vụ hiện tại. Đọc nội dung từng skill được chọn trước khi áp dụng.
+3. **Không kích hoạt hoặc đọc toàn bộ 29 skills theo mặc định.** Chỉ sử dụng kỹ năng liên quan trực tiếp; bổ sung skill khác khi phạm vi công việc thực sự đòi hỏi.
+4. Mọi thay đổi phải tuân thủ **bảo vệ dữ liệu và quyền riêng tư**, giới hạn nhánh GitHub được phép, PR Draft, kiểm thử và bằng chứng CI theo đúng SHA, quy tắc **Zero Paid API**; tuyệt đối không tự bật Google Billing, API trả phí hoặc thay đổi dữ liệu chuyến xe thật.
+5. Phân biệt **đã đề xuất / đã viết / đã kiểm thử / chưa xác minh**. Không dùng kết quả emulator, JVM hoặc source scan để tuyên bố Android vật lý, GNSS production, chi phí thực tế hoặc tính cước hành khách đã đạt.
+6. Mỗi lần bàn giao 7/7 phải nhắc lại quy trình này để AI tiếp quản thực hiện **trước khi chỉnh sửa mã nguồn**.
+
+**Thứ tự bắt buộc:** `AGENTS.md` → hồ sơ bàn giao mới nhất → `.agents/skills/navi-code-commander/SKILL.md` → skill chuyên môn liên quan → kiểm tra HEAD/CI/source → thay đổi tối thiểu → kiểm thử và báo cáo bằng chứng.

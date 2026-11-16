@@ -176,6 +176,7 @@ class HeadlessSqliteProbeInstrumentedTest {
         // No GPS, tariff, route, money or production SQLite in this test.
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val destroyedBefore = HeadlessSqliteProbeService.destructionCount()
+        var originalLease: Long? = null
         val serviceReady = CountDownLatch(1)
         var binder: HeadlessSqliteProbeService.ProbeBinder? = null
         val connection = object : ServiceConnection {
@@ -199,7 +200,7 @@ class HeadlessSqliteProbeInstrumentedTest {
             var attempts = 0
             while (!worker.isReady() && attempts++ < 150) Thread.sleep(100)
             assertTrue("Dart debug checkpoint worker not ready", worker.isReady())
-            val originalLease = worker.debugWriterLeaseForTest()
+            originalLease = worker.debugWriterLeaseForTest()
             assertNotNull("DEBUG writer lease absent during IPC", originalLease)
 
             // Reject malformed wire identities at the native boundary without
