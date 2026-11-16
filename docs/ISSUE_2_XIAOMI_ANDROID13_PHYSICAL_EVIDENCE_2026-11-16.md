@@ -99,6 +99,26 @@
 
 **Sau video:** A2-01/02/03 PASS UI; A2-04 Home/lock PASS có điều kiện; A2-05a provider OFF PASS video; **A2-05b app permission revoked PASS video**; A2-06 Lab SQLite NOT TESTED; approximate-only permission, stale notification, process kill/reboot/Doze, pin OEM dài, Android 11–16, fare calibration **NOT TESTED**. Issue #2 vẫn OPEN, Issue #3 production single owner + durable app SQLite writer vẫn NOT IMPLEMENTED. Chỉ thử khi xe dừng, không tính cước khách.
 
+## 2F. A2-05c: video chuyển precise ON → approximate-only (~22:32–22:33, 16/11/2026)
+
+**Nguồn bằng chứng riêng:** video MOV thời lượng **56,4494 giây**, user gửi trong chat khoảng **22:58 giờ Việt Nam ngày 16/11/2026**. Đã AI REVIEWED trực tiếp bằng các khung hình từ video, không upload file MOV/ảnh trích/GPS tọa độ/thông báo/PII lên GitHub. Máy theo khai báo trước **Xiaomi Redmi Note 12 Pro, Android 13**, firmware MIUI/HyperOS và SHA-256 binary APK thực cài **UNVERIFIED**. Màn hình trong video khoảng **22:32–22:33**.
+
+| Mốc video | Quan sát đã xác minh bằng hình ảnh |
+| --- | --- |
+| 0–2 s | Tab **GPS nền** trước Start: stopped, `GPS mới: Không`, owner none, ACK false; chủ dự án bấm `Bật GPS nền thử` → dialog `Bật dịch vụ GPS an toàn?` → `Bật dịch vụ thử`. |
+| Khoảng 3–6 s | Native service **Đang chạy**, `Chủ GPS: native_safety`, `ACK/heartbeat: Đã xác nhận`, nhưng `GPS mới: Không`, `Trạng thái: acquiring`, acceptedCount 0. **CHƯA quan sát `trusted_gps` / fresh GNSS trước lúc đổi quyền.** |
+| Khoảng 13–20 s | Android `Thông tin ứng dụng → Quyền ứng dụng → Vị trí`: giữ `Chỉ cho phép khi dùng ứng dụng`; công tắc `Sử dụng vị trí chính xác` từ **ON** sang **OFF**; toàn hệ thống không có thao tác tắt Vị trí trong đoạn này. Đây là approximate-only, không phải `Không cho phép`. |
+| Khoảng 22–27 s | Khi mở lại NaviTaxiMeter bằng icon có màn splash rồi tab GPS nền báo **Đã dừng**, `GPS mới: Không`, `Trạng thái: stopped`, owner none, ACK false. Đây là trạng thái sau mở lại, **không có bằng chứng trạng thái liên tục của service trong quá trình hệ điều hành áp quyền**. |
+| Khoảng 28–33 s | Trở lại trang `Quyền Vị trí` và bật lại `Sử dụng vị trí chính xác` → ON; quyền dùng ứng dụng vẫn được chọn. |
+| Khoảng 34–42 s | Trở lại ứng dụng, trước khi bấm Start: vẫn **stopped / fresh false / owner none / ACK false**. Không thấy tự khởi động dịch vụ từ phiên cũ. |
+| Khoảng 43–56 s | Chủ dự án **chủ động bấm Start** và xác nhận dialog, native service mới hoạt động; trong khung hình cuối `acquiring`, `GPS mới: Không`, owner native_safety, ACK true, acceptedCount 0. **Không có `trusted_gps` rõ trong phần cuối**, video kết thúc khi service còn active nên cần dừng nếu vẫn chạy. |
+
+**ĐÁNH GIÁ A2-05c: PARTIAL PASS (PASS các quan sát fail-closed sau downgrade/không tự hồi), CHƯA XÁC MINH ĐỦ toàn ca.** Video xác nhận precise OFF trong quyền app; sau mở lại không có GPS fresh/ACK của phiên cũ, khôi phục precise không tự Start. Nhưng điều kiện đầu của runbook yêu cầu **service active + GPS mới Có + trusted_gps trước downgrade** không đạt vì trước đổi đang `acquiring`. Do đó chưa chứng minh thiết bị xử lý **chuyển trực tiếp từ trusted_gps sang untrusted_gps** khi chỉ còn coarse permission hoặc xử lý stale fix nếu process vẫn sống. Android có vẻ mở lại tiến trình (splash) nhưng không có log OS để khẳng định chính xác cơ chế terminate/restart. Không suy diễn lỗi, cũng không nhận FULL PASS.
+
+**Ma trận sau video:** A2-01/A2-02/A2-03 PASS UI; A2-04 Home/lock PASS có điều kiện; A2-05a provider OFF PASS video; A2-05b revoke app permission hoàn toàn PASS video (giới hạn UI); **A2-05c partial PASS / chưa đủ xác minh transition; A2-06 Lab/SQLite NOT TESTED**. Stale notification, process kill/Doze/reboot, nhiều Android 11–16, quãng đường tính cước production và session SQLite writer chưa có chứng cứ. Issue #2 giữ **OPEN**, Issue #3 production one GNSS owner + one durable app SQLite writer **NOT IMPLEMENTED**.
+
+**Bước tiếp nếu muốn xác minh A2-05c đầy đủ:** không bắt lặp các ca đã PASS. Riêng A2-05c chỉ kiểm thêm khi `GPS mới: Có` và `trusted_gps` đã hiện trước khi tắt precise; nếu không có fresh trước thì dừng và ghi NOT VERIFIED, tránh kéo dài thử ngoài an toàn. Phải chụp quyền precise OFF và trạng thái trong app; nếu Android đóng tiến trình thì chỉ báo PASS phần fail-closed sau reopen, không nhận thử runtime continuous transition. Không thử khi lái/chở khách, ảnh/video chat đã che PII.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
