@@ -62,7 +62,9 @@ class LocationSafetyService : Service(), LocationListener {
                 "heartbeatAgeMs" to heartbeatAge,
                 "acceptedCount" to acceptedCount,
                 "lastTrustedAgeMs" to age,
-                "fresh" to (acknowledged && age in 0..12000),
+                // Status can flip to provider_disabled/permission_revoked
+                // before onDestroy. Never expose the previous fix as fresh.
+                "fresh" to GnssHealthPublication.isFresh(acknowledged, state, age),
                 "state" to state,
                 "billingEnabled" to false,
                 "coordinatesExported" to false

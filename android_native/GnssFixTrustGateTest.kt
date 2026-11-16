@@ -94,4 +94,29 @@ class GnssFixTrustGateTest {
         val explicitlyRestartedGate = GnssFixTrustGate()
         assertTrue(explicitlyRestartedGate.accepts(sample(fix = 11_000_000_000L)))
     }
+
+    @Test fun safetyHealthFreshnessRequiresBothLiveOwnerAndTrustedState() {
+        assertTrue(GnssHealthPublication.isFresh(true, "trusted_gps", 0L))
+        assertTrue(GnssHealthPublication.isFresh(true, "trusted_gps", 12_000L))
+        assertFalse(GnssHealthPublication.isFresh(false, "trusted_gps", 100L))
+        assertFalse(GnssHealthPublication.isFresh(true, "trusted_gps", -1L))
+        assertFalse(GnssHealthPublication.isFresh(true, "trusted_gps", 12_001L))
+    }
+
+    @Test fun oldFreshFixIsInvalidWhenSafetyServiceReportsFaultOrStop() {
+        val invalidStates = listOf(
+            "untrusted_gps", "provider_disabled", "permission_revoked",
+            "owner_lost", "stop_requested", "service_unavailable",
+            "acquiring", "stopped"
+        )
+        invalidStates.forEach { state ->
+            assertFalse(
+                "No state other than trusted_gps may publish a fresh fix: $state",
+                GnssHealthPublication.isFresh(true, state, 1L)
+            )
+        }
+        // A heartbeat may remain recent during onDestroy; that is not GPS.
+        assertFalse(GnssHealthPublication.isFresh(true, "provider_disabled", 0L))
+        assertFalse(GnssHealthPublication.isFresh(true, "permission_revoked", 0L))
+    }
 }

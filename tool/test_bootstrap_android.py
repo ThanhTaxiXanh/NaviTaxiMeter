@@ -96,6 +96,14 @@ class AndroidBootstrapTests(unittest.TestCase):
         self.assertIn('evidence.provider == "gps"', gate)
         self.assertIn('evidence.hasFineLocationPermission', gate)
         self.assertIn('fixNanos > lastAcceptedFixNanos', gate)
+        self.assertIn('GnssHealthPublication.isFresh(acknowledged, state, age)', service)
+        self.assertIn('state == "trusted_gps"', gate)
+        self.assertIn('trustedFixAgeMs in 0L..12_000L', gate)
+        gate_tests = (root / "GnssFixTrustGateTest.kt").read_text()
+        self.assertIn('safetyHealthFreshnessRequiresBothLiveOwnerAndTrustedState',
+                      gate_tests)
+        self.assertIn('oldFreshFixIsInvalidWhenSafetyServiceReportsFaultOrStop',
+                      gate_tests)
         self.assertNotIn('LocationOwnerRegistry.cancelPendingSafety', activity)
         self.assertIn('owner != "preview" && owner != "lab"', activity)
 

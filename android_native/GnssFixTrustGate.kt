@@ -57,3 +57,21 @@ internal class GnssFixTrustGate {
         private const val MAX_GAP_NANOS = 12_000_000_000L
     }
 }
+
+/**
+ * Publication policy for the Android safety monitor's health snapshot.
+ * A live service heartbeat is NOT evidence of a trusted GNSS sample.
+ * In particular, a recent old fix must become non-fresh immediately when
+ * permission/provider/owner changes the state, before onDestroy finishes.
+ * This never authorizes a fare or sends the coordinates anywhere.
+ */
+internal object GnssHealthPublication {
+    fun isFresh(
+        serviceAcknowledged: Boolean,
+        state: String,
+        trustedFixAgeMs: Long
+    ): Boolean =
+        serviceAcknowledged &&
+            state == "trusted_gps" &&
+            trustedFixAgeMs in 0L..12_000L
+}
