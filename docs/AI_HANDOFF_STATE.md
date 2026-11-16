@@ -1,3 +1,16 @@
+# CHU KỲ 7 — LƯỢT 3/7 · XIAOMI A2-02 UI MASKING FIX & A2-03 NOTIFICATION (16/11/2026)
+
+- Bộ đếm của cuộc trò chuyện hiện tại: **AI_REPLY_COUNT=3/7** sau câu trả lời này. Lượt 7/7 bắt buộc bàn giao độc lập mục 3.1–3.10 + Phụ lục A.
+- Chủ dự án gửi thêm **7 ảnh** lúc 14:30–14:32 trên Xiaomi Redmi Note 12 Pro, Android 13. Bằng chứng riêng tư không tải public. Nội dung quan sát đã lược riêng tư tại `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md`, bổ sung commit `0155b4705f10b98cc90ab0a355948d1b35a1a32a` và comment Issue #2.
+- **A2-01 repeated physical UI PASS:** `native_safety` active, fresh `trusted_gps`, ACK confirmed, acceptedCount 8→23; **A2-03 notification Stop PASS** bằng màn thông báo `DỪNG GPS AN TOÀN` 14:31 và màn stopped/owner none/ACK false 14:32.
+- **A2-02 INCONCLUSIVE**: GPS thử hiển thị `Đã dừng xem GPS` hoặc `Chưa bật theo dõi`, không hiện `GPS_BUSY`; GPS nền vẫn active sau đó. Đọc mã `GpsPreviewPage._start` phát hiện catch `_state = '$e'` trước `await _stop()`, khiến cleanup ghi đè lý do bị từ chối. Native `MainActivity.kt` trả GPS_BUSY khi claim owner thất bại. Chưa suy diễn blocker proof.
+- **Code fix** `8864154eba60afdf8ee4a36795298d4aa2dceb28` tại `lib/src/ui/gps_preview_page.dart`: preserve GPS_BUSY (và ưu tiên báo lỗi cleanup) sau khi kết thúc cleanup. **Test commit** `ca93b99f0443a84773833d161b951317400c7676`, thêm `test/gps_preview_start_failure_test.dart` 3 ca: async cleanup, non-busy error, cleanup failure. Không đổi engine fare, native GPS owner, SQLite v3, prefs, APIs hay main.
+- Zero Cost Source Gate trên docs SHA `0155b470...`: PR run `43825414058` **SUCCESS**; Foundation PR `43825414130` **IN PROGRESS** lúc ghi, chưa tuyên bố CI PASS. Sau commit state này, HEAD/CI lại thay đổi: phải đối chiếu chính xác SHA.
+- **Bước tiếp theo:** chờ kết quả GitHub Actions trên đúng code/test SHA hoặc docs-only HEAD mới; chỉ sau Foundation SUCCESS, tải artifact DEBUG đúng run, kiểm ZIP SHA+APK SHA, đưa APK mới cho chủ dự án. Yêu cầu retest A2-02 nhìn rõ `GPS_BUSY`, chụp GPS Preview và GPS nền; tiếp A2-04 Home/lock và A2-05 revoke. Issue #2 OPEN; Issue #3 production GNSS owner + one real durable writer NOT IMPLEMENTED; PR #1 DRAFT; không thu cước.
+- Tiếp tục chỉ ghi nhánh `feature/navitaximeter-foundation`, không merge main/TTX, không force push, không bật paid API, không tự migrate DB, không thử tính cước khách.
+
+---
+
 # CHU KỲ 7 — LƯỢT 2/7 · KẾT QUẢ XIAOMI ANDROID 13 THẬT (16/11/2026)
 
 - **AI_REPLY_COUNT = 2/7** sau lượt này. Lượt 7/7 bắt buộc bàn giao đầy đủ 3.1–3.10 + Phụ lục A. Không reset trong cùng chat.
