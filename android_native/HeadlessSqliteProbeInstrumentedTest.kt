@@ -370,4 +370,109 @@ class HeadlessSqliteProbeInstrumentedTest {
         }
     }
 
+
+    @Test
+    fun competingWriterLeaseDeniesEngineUntilTeardownAndExplicitRebind() {
+        // DEBUG-only: prove a competing in-process writer prevents a *real*
+        // Android bound Service from launching a second Dart SQLite engine.
+        // A JVM registry race alone does not exercise Service onCreate/onDestroy.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var competingLease: Long? = null
+        var attempts = 0
+        while (competingLease == null && attempts++ < 150) {
+            competingLease = DebugWriterOwnershipRegistry.claim()
+            if (competingLease == null) Thread.sleep(100)
+        }
+        val held = competingLease
+            ?: throw AssertionError("Prior debug Service did not release its writer lease")
+        val destroyedBefore = HeadlessSqliteProbeService.destructionCount()
+        try {
+            val bound = CountDownLatch(1)
+            var binder: HeadlessSqliteProbeService.ProbeBinder? = null
+            val connection = object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                    binder = service as? HeadlessSqliteProbeService.ProbeBinder
+                    bound.countDown()
+                }
+                override fun onServiceDisconnected(name: ComponentName?) {
+                    binder = null
+                }
+            }
+            assertTrue("Contended debug Service did not bind", context.bindService(
+                Intent(context, HeadlessSqliteProbeService::class.java),
+                connection, Context.BIND_AUTO_CREATE
+            ))
+            try {
+                assertTrue("Contended Service never connected",
+                    bound.await(20, TimeUnit.SECONDS))
+                val blocked = binder ?: throw AssertionError("Missing contended binder")
+                assertEquals("Second Service incorrectly acquired a writer", null,
+                    blocked.debugWriterLeaseForTest())
+                assertTrue("Contended Service unexpectedly launched Dart", !blocked.isReady())
+                assertNull("External writer lease should remain exclusive",
+                    DebugWriterOwnershipRegistry.claim())
+
+                val denied = CountDownLatch(1)
+                var failure: String? = null
+                blocked.debugCheckpoint(
+                    "DBG_CONTENDED_${android.os.SystemClock.elapsedRealtimeNanos()}",
+                    1L, 0L, "a".repeat(64)
+                ) { ack, error ->
+                    if (ack != null) failure = "UNEXPECTED_DEBUG_ACK"
+                    else failure = error
+                    denied.countDown()
+                }
+                assertTrue("Blocked checkpoint callback timed out",
+                    denied.await(20, TimeUnit.SECONDS))
+                assertEquals("DEBUG_SESSION_PAUSED", failure)
+            } finally {
+                context.unbindService(connection)
+            }
+
+            var destroyAttempts = 0
+            while (HeadlessSqliteProbeService.destructionCount() <= destroyedBefore &&
+                   destroyAttempts++ < 150) Thread.sleep(100)
+            assertTrue("Contended Service was not destroyed",
+                HeadlessSqliteProbeService.destructionCount() > destroyedBefore)
+            assertTrue("Service teardown stole another writer's lease",
+                DebugWriterOwnershipRegistry.matches(held))
+            assertNull("Teardown must not free a competing lease",
+                DebugWriterOwnershipRegistry.claim())
+        } finally {
+            assertTrue("Failed to release test-only competing lease",
+                DebugWriterOwnershipRegistry.release(held))
+        }
+
+        // A separate, subsequent bind may start a new worker only after the
+        // competing lease has been explicitly released.
+        val rebound = CountDownLatch(1)
+        var reboundBinder: HeadlessSqliteProbeService.ProbeBinder? = null
+        val connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                reboundBinder = service as? HeadlessSqliteProbeService.ProbeBinder
+                rebound.countDown()
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                reboundBinder = null
+            }
+        }
+        assertTrue("Fresh Service rebind was rejected", context.bindService(
+            Intent(context, HeadlessSqliteProbeService::class.java),
+            connection, Context.BIND_AUTO_CREATE
+        ))
+        try {
+            assertTrue("Fresh Service never connected", rebound.await(20, TimeUnit.SECONDS))
+            val worker = reboundBinder ?: throw AssertionError("Missing fresh binder")
+            var readyAttempts = 0
+            while (!worker.isReady() && readyAttempts++ < 150) Thread.sleep(100)
+            assertTrue("Dart engine did not start after lease release", worker.isReady())
+            val newLease = worker.debugWriterLeaseForTest()
+            assertNotNull("Fresh engine has no writer lease", newLease)
+            assertTrue("Rebind reused stale writer token", newLease!! > held)
+            assertNull("A third writer was allowed while service is running",
+                DebugWriterOwnershipRegistry.claim())
+        } finally {
+            context.unbindService(connection)
+        }
+    }
 }
