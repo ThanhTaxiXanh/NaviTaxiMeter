@@ -1,3 +1,15 @@
+# CHU KỲ 8 — LƯỢT 4/7 · XIAOMI A2-05c VIDEO PARTIAL PASS (16/11/2026, UTC+07)
+
+- **AI_REPLY_COUNT=4/7 sau lượt này**. Trong chat hiện tại, lượt 7/7 phải tạo bàn giao đầy đủ 3.1–3.10 kèm Phụ lục A/C; không reset giữa chat.
+- Người dùng gửi MOV **56,4494 giây** khoảng 22:58 giờ Việt Nam ngày 16/11, video màn Xiaomi Android 13 lúc 22:32–22:33. Đã trực tiếp xem các khung hình. Đổi riêng `Sử dụng vị trí chính xác` ON→OFF trong quyền app, giữ `Chỉ cho phép khi dùng ứng dụng`. Sau reopen app trạng thái `stopped/fresh false/owner none/ACK false`; sau precise ON vẫn stopped trước Start mới. Người dùng bấm Start mới thủ công ở cuối, lúc video dừng service còn active/acquiring nên nếu còn chạy phải Stop.
+- **A2-05c PARTIAL PASS về fail-closed sau reopen và không tự restart, nhưng full case NOT VERIFIED**: trước đổi precise, service active/ACK true **nhưng acquiring/fresh false, acceptedCount 0**, chưa hề thấy `trusted_gps` để chứng minh chuyển trusted→untrusted hoặc stale-fix khi process không chết. Màn splash không đủ chứng minh kill nguyên nhân. Không đánh dấu FAIL code hoặc FULL PASS.
+- Chỉ ghi mô tả kỹ thuật đã lược riêng tư tại `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` mục 2F (commit `bb2688362f7ca090ce5de711b8bbe3b6e8903f58`); cập nhật `docs/ISSUE_2_XIAOMI_ANDROID13_A2_05C_APPROXIMATE_ONLY_RUNBOOK_2026-11-16.md` (commit `9a4f410e376ffe30c339878bb09cf4f381fac47f`); Issue #2 comment ID `6921693612`. Video gốc/ảnh chứa GPS/PII không post GitHub.
+- **CI HEAD trước tài liệu** `c5dd99a59927753cc4196cdcafbbb3a11bf30f52`: Foundation PR run [43891672739](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43891672739) **SUCCESS**; Zero Cost PR run [43891672810](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43891672810) **SUCCESS**. Sau docs mới, phải kiểm CI đúng HEAD hiện hành, không gán success cũ sang SHA mới.
+- PR #1 OPEN/DRAFT, Issue #2 OPEN, Issue #3 OPEN: one production native GNSS owner + one durable app SQLite writer NOT IMPLEMENTED; Zero Paid API, không tính cước khách, không đổi SQLite v3/tariffs, không main merge, không force push.
+- Bước tiếp nếu test thêm: không lặp A2-05a/b; chỉ khi cần hoàn tất **A2-05c trusted→untrusted**, yêu cầu trạng thái `trusted_gps`/fresh true trước thay đổi; nếu không có fix tại chỗ thì dừng/không nhận full PASS. Không nên gộp thêm ca A2-06 hay Doze khi chưa an toàn. Có thể song song review thiết kế Issue #3 nhưng không tự implement production.
+
+---
+
 # CHU KỲ 8 — LƯỢT 3/7 · CHUẨN BỊ XIAOMI A2-05c (16/11/2026, UTC+07)
 
 - **AI_REPLY_COUNT=3/7 sau phản hồi này** trong chat hiện tại; lượt 7/7 phải tạo hồ sơ bàn giao đầy đủ, không reset trong cùng chat.
