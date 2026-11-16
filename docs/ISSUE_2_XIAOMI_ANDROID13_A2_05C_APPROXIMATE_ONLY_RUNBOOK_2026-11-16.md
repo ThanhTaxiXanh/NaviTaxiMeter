@@ -1,6 +1,6 @@
 # Issue #2 — Xiaomi Android 13: A2-05c chuyển từ vị trí CHÍNH XÁC sang GẦN ĐÚNG
 
-**Ngày:** 16/11/2026 (UTC+07). **Trạng thái:** PREPARED / NOT TESTED. Một ca kiểm thử mới, không thay thế hay lặp lại A2-05a tắt Vị trí toàn hệ thống (PASS video) và A2-05b thu hồi hoàn toàn quyền Vị trí ứng dụng (PASS video có giới hạn).
+**Ngày:** 16/11/2026 (UTC+07). **Cập nhật bằng chứng:** **A2-05c PARTIAL PASS, chưa xác minh đầy đủ** (video 56,45 giây lúc 22:32–22:33). Video ghi precise ON → OFF, sau khi mở lại service stopped/owner none/fresh false/ACK false; cấp lại precise không tự Start. **Điều kiện trusted_gps trước đổi không có** (lúc đó acquiring/fresh false), vì vậy chưa chứng minh transition từ fix trusted nếu app vẫn chạy. Xem mục 2F tài liệu bằng chứng Xiaomi; các bước dưới đây được lưu làm quy trình tham chiếu nếu cần phần thử thiếu. A2-05a/b đã PASS video, không bắt thử lại.
 
 ## 1. Mục tiêu, môi trường, và cơ sở mã nguồn
 
