@@ -1,3 +1,15 @@
+# CHU KỲ 8 — LƯỢT 5/7 · XIAOMI A2-05c VIDEO TRUSTED→APPROXIMATE PASS (17/11/2026, UTC+07)
+
+- **AI_REPLY_COUNT=5/7 sau phản hồi này** trong chat hiện tại; **lượt 7/7** bắt buộc bàn giao hồ sơ độc lập 3.1–3.10 cùng phụ lục A/C. Không reset nếu vẫn cùng chat.
+- User gửi MP4 **54,6025 giây** lúc ~06:46 17/11, màn hình hiển thị ~06:44–06:45. AI đã xem khung hình. **Trước precise OFF** native GPS nền active/ACK true, **GPS mới Có/trusted_gps**, acceptedCount 1 tại ~9s. Quyền app `Chỉ cho phép khi dùng ứng dụng`, `Sử dụng vị trí chính xác` ON→OFF khoảng ~12s. Sau app reopen khoảng ~21s trạng thái stopped/fresh false/owner none/ACK false. Sau đó user **bật mới thủ công khi precise vẫn OFF**: native service active/ACK true **nhưng acquiring/fresh false/acceptedCount 0** từ ~30–51s; precise OFF tái xác nhận trong Settings ở ~42s. Kết video ~53s service dừng/owner none/ACK false. Video **không ghi thao tác restore precise ON**.
+- **A2-05c nâng từ PARTIAL → PASS THEO VIDEO trong giới hạn các hành vi quan sát**: (1) trusted fix tồn tại trước degrade, sau reopen không công bố trusted/fresh/ACK cũ; (2) coarse-only service ACK **không tương đương trusted GNSS**. Vẫn **NOT VERIFIED** in-process continuous transition, exact OS kill moment, OEM khác và APK installed SHA. Không suy diễn app release hoặc tiền cước được an toàn; không yêu cầu user lặp lại nhánh đã PASS.
+- Bằng chứng chỉ **text sanitized** ở `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` mục 2G, docs commit `56e003ef843a3b685e7e98b93645326dd28147b4`; runbook A2-05c cập nhật tại `f2bdb90608e679f5de1436d61e4e517e9a4d2c97`; Issue #2 comment ID `6932993191`. **Không post video/frames/PII lên GitHub**.
+- **HEAD trước những docs commits này:** `9e80462f9ce759f39ca27391fbaeeb99da6a2b9c`; Foundation PR run [43903252545](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43903252545) **SUCCESS**, Zero Cost PR run [43903252549](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43903252549) **SUCCESS**. Sau docs mới, phải kiểm đúng **HEAD CI mới** trước khi tuyên bố PASS.
+- Chỉ ghi branch `feature/navitaximeter-foundation`, PR #1 OPEN/DRAFT, Issue #2 OPEN và #3 OPEN; main/TTX read-only, no force-push, Zero Paid API, không thu cước khách, không xóa/migrate SQLite v3/tariff prefs. **Issue #3 real production GNSS+one durable app writer NOT IMPLEMENTED**.
+- **Bước tới:** xác minh CI theo HEAD mới; không cần test lại A2-05c đã đạt. Nếu muốn dùng GPS chính xác ở lần sau, chủ dự án cần kiểm công tắc precise ON vì video kết thúc vẫn OFF; lưu ý cuối video service đã stopped. Tiếp tục Issue #2 với **một** ca safety còn thiếu có hướng dẫn chi tiết (ưu tiên stale notification/rapid Stop hoặc OEM), hoặc review thiết kế Issue #3; không gom nhiều ca vào một lượt.
+
+---
+
 # CHU KỲ 8 — LƯỢT 4/7 · XIAOMI A2-05c VIDEO PARTIAL PASS (16/11/2026, UTC+07)
 
 - **AI_REPLY_COUNT=4/7 sau lượt này**. Trong chat hiện tại, lượt 7/7 phải tạo bàn giao đầy đủ 3.1–3.10 kèm Phụ lục A/C; không reset giữa chat.
