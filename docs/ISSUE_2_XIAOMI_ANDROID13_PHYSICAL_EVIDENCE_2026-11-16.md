@@ -26,6 +26,17 @@
 
 **Không có lỗi rõ ràng trong các ảnh đã đối chiếu.** Không suy diễn kết quả rộng hơn những gì ảnh cho thấy.
 
+## 2A. Bổ sung bằng chứng vòng hai: A2-02 và A2-03 notification (14:30–14:32)
+
+**7 ảnh bổ sung người dùng gửi trong chat riêng, không tải ảnh gốc lên GitHub.** Đây vẫn là Xiaomi Redmi Note 12 Pro/Android 13 do người dùng cung cấp; không có log hệ điều hành hoặc mã hash APK đã cài.
+
+- **A2-01 lặp lại, PASS trạng thái phần mềm/ACK:** khoảng 14:30 `Dịch vụ: Đang chạy`, `GPS mới: Có`, `Chủ GPS: native_safety`, `Trạng thái: trusted_gps`, `ACK/heartbeat: Đã xác nhận`, acceptedCount **8**, tuổi fix **3729 ms**; 14:31 acceptedCount **23**, tuổi fix **3510 ms**. Không thấy thu cước.
+- **A2-02 tranh chấp GPS preview, CHƯA ĐỦ BẰNG CHỨNG / INCONCLUSIVE:** ảnh ở tab `GPS thử` hiện `Đã dừng xem GPS` và ảnh khác `Chưa bật theo dõi`, không có thông báo `GPS_BUSY` hiển thị. Trở lại tab GPS nền thấy `native_safety` vẫn active và ACK true. Không thấy hai owner hoạt động cùng lúc, nhưng màn hình **không xác minh được lý do Preview dừng**. Đối chiếu source Flutter `lib/src/ui/gps_preview_page.dart` tại trước sửa: catch bắt lỗi `LocationOwnerLease.acquire` rồi đặt `_state = '$e'`, nhưng `await _stop()` sau đó ghi đè `_state='Đã dừng xem GPS'`. Native `android_native/MainActivity.kt` thực sự trả `GPS_BUSY` nếu `LocationOwnerRegistry.claim(owner)` từ chối. Do **điểm mù UI có thật**, KHÔNG ghi A2-02 PASS chỉ dựa ảnh.
+- **A2-03 notification STOP, PASS theo diễn tiến UI:** ảnh 14:31 cho thấy thông báo foreground `NaviTaxiMeter · Theo dõi an toàn` với nút `DỪNG GPS AN TOÀN`; ảnh 14:32 không còn thông báo Navi và tab GPS nền hiện `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Chủ GPS: none`, `Trạng thái: stopped`, `ACK/heartbeat: Chưa xác nhận`, acceptedCount tích lũy **34**. Kết luận **PASS về hành vi UI được quan sát**, không phải log chứng minh token chống notification cũ hay Android process lifecycle.
+- **A2-04 Home/khóa màn**, **A2-05 revoke**, **A2-06 Lab** vẫn NOT TESTED.
+
+**Sửa lỗi điểm mù từ chính bằng chứng Xiaomi:** commit `8864154eba60afdf8ee4a36795298d4aa2dceb28` sửa thứ tự thông báo lỗi sau cleanup, commit `ca93b99f0443a84773833d161b951317400c7676` thêm 3 test phân biệt GPS_BUSY, cleanup chờ và lỗi cleanup. **Chưa suy diễn CI PASS** cho code mới nếu GitHub Actions chưa hoàn tất; cần lấy **APK DEBUG mới từ run thành công đúng SHA**, xác minh ZIP/APK SHA rồi yêu cầu retest A2-02 để nhìn rõ `GPS_BUSY`. Không dùng ảnh từ APK cũ để chứng minh UI mới.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
