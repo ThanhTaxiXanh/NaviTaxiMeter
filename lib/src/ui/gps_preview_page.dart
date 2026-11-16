@@ -7,6 +7,25 @@ import '../core/location_tracking_policy.dart';
 import '../core/location_owner_gate.dart';
 import '../core/serialized_gps_stop.dart';
 
+/// Keep the original Android rejection visible *after* stream/lease teardown.
+/// Cleanup errors must take precedence so a GPS owner is never assumed free.
+Future<String> gpsPreviewStartFailureAfterCleanup(
+  Object startError,
+  Future<void> Function() cleanup,
+) async {
+  try {
+    await cleanup();
+  } catch (cleanupError) {
+    return 'Không thể dừng GPS an toàn: $cleanupError; '
+        'lỗi khởi động: $startError';
+  }
+  if (startError is PlatformException && startError.code == 'GPS_BUSY') {
+    return 'GPS_BUSY: GPS đang được dùng bởi chế độ khác. '
+        'Dừng GPS nền thử trước khi bật GPS thử.';
+  }
+  return 'Không thể bật GPS thử: $startError';
+}
+
 /// Preview-only validation. It never feeds a fare engine or stores coordinates.
 abstract final class PreviewGpsQuality {
   static bool trusted({
@@ -124,9 +143,10 @@ class _GpsPreviewPageState extends State<GpsPreviewPage>
         }
       });
       setState(() => _state = 'Đang tìm vị trí chính xác...');
-    } catch (e) {
-      if (mounted) setState(() => _state = '$e');
-      await _stop();
+    } catch (error) {
+      // The previous cleanup wrote 'Đã dừng xem GPS' over GPS_BUSY.
+      final message = await gpsPreviewStartFailureAfterCleanup(error, _stop);
+      if (mounted) setState(() => _state = message);
     } finally {
       if (mounted) setState(() => _starting = false);
     }
