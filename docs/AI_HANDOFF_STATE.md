@@ -1,3 +1,14 @@
+# CHU KỲ 5 — BÀN GIAO BẮT BUỘC 7/7, 16/11/2026
+
+- AI_REPLY_COUNT = 7/7 trong chat này; chat mới reset 0, tiếp tục bàn giao sau mỗi 7 lượt.
+- Bản độc lập: `docs/HANDOFF_2026-11-16_CYCLE5_7-7.md` gồm mục 3.1–3.10, Phụ lục A/B về điện thoại và Phụ lục C quy tắc 10.
+- HEAD trước bàn giao `ed1ad5e4bf1fbfdbdb74beab253ef3c1d1b9ebda`, Foundation PR 43800182673 IN PROGRESS, Zero Cost PR 43800182842 SUCCESS. Foundation trước đó FAIL vì `originalLease` chưa đúng scope, sửa ở `ed1ad5e` chờ CI.
+- PR #1 Draft, Issue #3 OPEN, Issue #2 OPEN/NOT TESTED physical; main/TTX read-only. DEBUG writer lease test != production GNSS/SQLite.
+- Mọi task code: đọc `AGENTS.md` → latest handoff → `.agents/skills/navi-code-commander/SKILL.md` → chỉ skills liên quan. Zero Paid API, data privacy, exact-SHA tests, không thu cước.
+- Việc kế: verify CI SHA mới, sửa lỗi thật nếu còn; tiếp tục Issue #3 service lifecycle và single owner/writer, không auto migration; điện thoại chỉ khi đủ điều kiện Phụ lục A.
+
+---
+
 # CHU KỲ MỚI — LƯỢT 1/7 (16/11/2026) · ISSUE #3 P1 DEBUG IPC
 
 - Chat mới khởi tạo `AI_REPLY_COUNT=0`; sau lượt trả lời này `AI_REPLY_COUNT=1`, tiếp tục bàn giao **đầy đủ** ở lượt 7/7 theo 3.1–3.10 và Phụ lục A. Đã đọc toàn bộ bản bàn giao ngày 16/11/2026 và quy tắc cứng.
