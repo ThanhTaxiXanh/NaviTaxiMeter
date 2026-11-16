@@ -1,3 +1,15 @@
+# CHU KỲ 7 — LƯỢT 5/7 · A2-02 XIAOMI GPS_BUSY PASS (16/11/2026)
+
+- Sau lượt phản hồi này: **AI_REPLY_COUNT=5/7**, bàn giao đầy đủ mục 3.1–3.10 + Phụ lục A bắt buộc ở lượt **7/7**; không reset khi chưa đổi chat.
+- User gửi 3 ảnh mới từ Xiaomi Redmi Note 12 Pro, Android 13, khoảng 15:07–15:09. Ảnh đầu `GPS thử` hiển thị chính xác `GPS_BUSY: GPS đang được dùng bởi chế độ khác. Dừng GPS nền thử trước khi bật GPS thử.` khi native đang chiếm owner; lần sau trang `GPS nền` báo `Dịch vụ: Đã dừng`, `GPS mới: Không`, `Chủ GPS: none`, `ACK/heartbeat: Chưa xác nhận` (counter 15 lịch sử); ảnh cuối `GPS thử` báo `GPS đang cập nhật · chỉ xem thử`, accuracy 10.3 m, speed 0.0 km/h; GPS tọa độ chi tiết đã được loại khỏi bản ghi public.
+- **PHYSICAL UI PASS:** A2-01 Start/ACK, A2-02 owner exclusivity/GPS_BUSY và sequential reacquire, A2-03 dừng bằng UI và notification. **NOT TESTED:** A2-04 Home/lock, A2-05 quyền vị trí/provider, A2-06 optional Lab; không suy diễn accuracy GNSS độc lập hay invariant dưới race/Doze.
+- Bằng chứng đã ghi ở `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` cập nhật commit `8dad4cdfaf3f94bcc9f4b25f3ee79c96401d8b79` và comment issue #2. Chỉ ghi thông tin kỹ thuật không định danh; không upload screenshot có tọa độ lên GitHub.
+- Lượt 4 đã sửa compile failure của `PlatformException` trong `lib/src/ui/gps_preview_page.dart`: commit `db4dcab34432c3a1c5a31903e30b0d0ff9b31def` thêm import `package:flutter/services.dart`. **CI ĐÚNG SHA code PASS:** Foundation PR run `43826864218` SUCCESS gồm Flutter analyze/test và DEBUG APK + Android14 emulator; Zero Cost PR run `43826864300` SUCCESS. Artifact DEBUG ở run `43826864218` ID `14206464796`. Chưa xác minh hash APK cài trên Xiaomi; thông báo GPS_BUSY trên ảnh phù hợp với mã đã sửa. Không dùng CI thay cho physical.
+- **Bước tiếp theo:** hướng dẫn A2-04 khóa màn 60 giây: giữ GPS nền active trước Home/lock, chụp trạng thái và notification, mở khóa đọc lại, chụp, dừng từ app; đánh dấu PASS/FAIL/NOT TESTED theo actual ACK+owner; sau đó A2-05 thu hồi quyền/provider. Chỉ khi lỗi thực mới sửa source.
+- Dự án tiếp tục giới hạn: PR #1 OPEN/DRAFT, chỉ ghi `feature/navitaximeter-foundation`; Issue #2 OPEN; Issue #3 **one production GNSS owner + durable SQLite writer NOT IMPLEMENTED**; không merge main, không đụng TTX, không chỉnh production SQLite v3, không auto migration, không thu cước, không paid APIs. HEAD đã đổi bởi docs commit, đối chiếu CI đúng SHA nếu cần.
+
+---
+
 # CHU KỲ 7 — LƯỢT 3/7 · XIAOMI A2-02 UI MASKING FIX & A2-03 NOTIFICATION (16/11/2026)
 
 - Bộ đếm của cuộc trò chuyện hiện tại: **AI_REPLY_COUNT=3/7** sau câu trả lời này. Lượt 7/7 bắt buộc bàn giao độc lập mục 3.1–3.10 + Phụ lục A.
