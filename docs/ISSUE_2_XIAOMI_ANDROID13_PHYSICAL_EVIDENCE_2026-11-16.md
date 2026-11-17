@@ -140,6 +140,29 @@
 
 **Trạng thái tổng:** A2-01/A2-02/A2-03 PASS theo ảnh; A2-04 PASS có điều kiện; A2-05a provider OFF PASS video; A2-05b revoke hoàn toàn PASS video; **A2-05c core observed safety PASS video (giới hạn)**; A2-06 SQLite Lab, stale notification, Doze/kill/reboot, OEM/Android 11–16 **NOT TESTED**. Issue #2 OPEN; Issue #3 TripLocationService production và one durable SQLite writer NOT IMPLEMENTED. Không dùng app để thu cước khách.
 
+## 2H. A2-07A: video Stop nhanh SAU ACK, giải phóng owner cho GPS thử (17/11/2026)
+
+**Bằng chứng:** MP4 **29,5506 giây**, user gửi riêng trong chat khoảng **07:09 giờ Việt Nam, 17/11/2026**. Video hiển thị đồng hồ máy khoảng 07:08. AI trực tiếp xem các khung 0–29 giây, bao gồm bước Stop và Preview; **không upload video, frame, tọa độ/vĩ độ/kinh độ được hiện trong `GPS thử`, thông báo hoặc PII lên GitHub**. Máy theo khai báo trước: Xiaomi Redmi Note 12 Pro, Android 13; MIUI/HyperOS firmware và SHA APK cài **UNVERIFIED**.
+
+| Thời gian video | Bằng chứng đã thấy |
+| --- | --- |
+| 0–2s | Tab `GPS nền` ban đầu `Dịch vụ: Đã dừng`, `GPS mới: Không`, owner `none`, ACK chưa xác nhận; user bấm **Bật GPS nền thử → Bật dịch vụ thử**. |
+| ~3–4,6s | Dịch vụ **Đang chạy**, owner `native_safety`, `ACK/heartbeat: Đã xác nhận`, state `acquiring`, fresh false/acceptedCount 0; xác nhận START/ACK chỉ là chẩn đoán, không đòi trusted fix cho ca Quick Stop. |
+| ~5–6s | User **chủ động bấm Dừng GPS nền thử** ngay sau ACK; màn thể hiện `Đã gửi lệnh dừng có xác nhận token`. Service chuyển `stopped`, owner `none`, ACK chưa xác nhận và `GPS mới: Không`. |
+| ~8–14s | Vẫn trên tab GPS nền, bấm **Đọc lại trạng thái**; các lần đọc tiếp vẫn `stopped / fresh false / owner none / ACK false`. Không thấy old ACK bật lại. |
+| ~15–16s | Sang tab **GPS thử**, ban đầu `Chưa bật theo dõi`, user bấm **Bắt đầu xem GPS**. |
+| ~17–21s | Preview `Đang tìm vị trí chính xác` rồi `GPS đang cập nhật - chỉ xem thử`, có mẫu GPS thực (trong video nhìn thấy tọa độ và accuracy nhưng **cố ý KHÔNG CHÉP** vào repo). Không quan sát `GPS_BUSY` cản Preview sau Stop native. Chưa chứng minh OS không có overlap FGS bằng log OS; chỉ theo app UI. |
+| ~22–23s | User bấm **Dừng GPS thử**, app hiển thị `Đã dừng xem GPS`. |
+| ~24–28s | Trở lại tab GPS nền và bấm **Đọc lại trạng thái**; service vẫn `stopped`, owner `none`, ACK false, fresh false. Không có tự restart trong phạm vi video. |
+
+**ĐÁNH GIÁ: A2-07A PASS THEO VIDEO/UI trong phạm vi Stop nhanh SAU ACK**: lease native được nhả trong UI; ACK/fresh không còn, Preview sau đó có thể lấy GPS và dừng, GPS nền không tự bật lại. Không có khoản tiền hoặc biên nhận nào được tạo/quan sát. Do video không thể xác thực Android OS location FGS ở từng mili giây, đây **không phải** chứng nhận race-free tuyệt đối, độ chính xác cước hoặc production.
+
+**Hai cổng vẫn NOT TESTED / CHƯA THỂ THỬ BẰNG UI:**
+1. **Stop trước first ACK**: Flutter `SafetyServicePage._busy` vô hiệu hóa nút Dừng cho tới khi Start/ACK flow kết thúc. Video chỉ thấy Stop SAU ACK; không biến thành PASS pending-START race.
+2. **Replay notification Stop của PHIÊN CŨ**: `PendingIntent` gắn token và Android thay thông báo hiện hành; giao diện không có nút phát lại token cũ. A2-03 notification Stop thông thường trước đây PASS nhưng khác hoàn toàn stale-token test. Cần debug-only instrumented/harness có kiểm soát trước khi thử thật.
+
+**Ma trận sau cập nhật:** A2-01/02/03 PASS UI, A2-04 PASS có điều kiện, A2-05a system provider OFF PASS video, A2-05b app permission revoked PASS theo video có giới hạn, A2-05c trusted→approximate core safety PASS video có giới hạn, **A2-07A Quick Stop after ACK PASS video**, A2-06 Lab/SQLite NOT TESTED, pre-ACK Stop và stale notification STOP NOT TESTED, Doze/kill/reboot/OEM Android 11–16 NOT TESTED. Issue #2 vẫn OPEN. Issue #3 single production TripLocationService/one durable app SQLite writer NOT IMPLEMENTED; ZERO PAID API, không thu cước khách.
+
 ## 3. Bước tiếp theo có thể thực hiện ngay trên điện thoại
 
 **A2-02**: khi dừng như ảnh 14:00, vào **GPS nền** → **Bật GPS nền thử** → hộp thoại **Bật dịch vụ thử** → **Đọc lại trạng thái** và xác nhận `native_safety` + `Đã xác nhận`. Trong khi native còn chạy, chuyển **GPS thử** → bấm **Bắt đầu xem GPS**, chụp thông báo lỗi/state **đã che tọa độ**. Mong đợi `GPS_BUSY`/owner bận, không mở hai stream. Quay lại **GPS nền** → **Đọc lại trạng thái**, chụp owner/ACK → **Dừng GPS nền thử**. Nếu native bị dừng khi chuyển tab thì NOT TESTED cho phần tranh chấp, không ghi PASS. Nếu song song hoặc crash thì FAIL và dừng.
