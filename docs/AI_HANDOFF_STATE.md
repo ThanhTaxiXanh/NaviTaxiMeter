@@ -1,3 +1,15 @@
+# CHU KỲ 9 — LƯỢT 3/7 · EXACT-SHA ANDROID 14 EMULATOR 6/6 PASS (17/11/2026, UTC+07)
+
+- AI_REPLY_COUNT=3/7 sau phản hồi lần này trong chat Cycle 9. Lượt 7/7 tiếp theo phải tạo handoff độc lập 3.1–3.10 + Phụ lục A/C, không reset trong cùng chat.
+- HEAD xác minh TRƯỚC khi cập nhật bằng chứng: 97d96d6101e6631524235ea629a2b414274b6259; PR #1 OPEN/DRAFT; Issue #2/#3 OPEN. CI SHA trên GitHub **Foundation Flutter Android run 43989450112 SUCCESS** (build-test SUCCESS, Android 14 emulator SUCCESS), **Zero Cost Source Gate run 43989450094 SUCCESS** (source-only).
+- Lấy log thật của job emulator 133729123793: 'Starting 6 tests on test(AVD) - 14', 'Tests 6/6 completed. (0 skipped) (0 failed)', 'PASS: SIX Android emulator instrumented methods executed: four headless SQLite probes and two native safety-service token races'. Đây là chạy 6 instrumentation, không chỉ compile; job có bước JUnit XML gate SUCCESS.
+- A2-07B **PASS THEO ANDROID 14 EMULATOR ONLY**: saved old notification PendingIntent thật replay sau ACK của new service, new owner & ACK còn đúng, no stopRequested/no overlap claim. Stop pre-ACK **PASS THEO ANDROID 14 EMULATOR ONLY**: requestSafetyStop sau reservation trước native onStartCommand và ACK, queued START teardown không có ACK/fresh, stale START cũ không giết lease mới. Không phủ race sau dispatch trước first ACK một cách toàn diện và old STOP khi new lease pending. Máy Xiaomi Redmi Note 12 Pro Android 13 cho hai ca này **NOT TESTED**, UI cũ không có nút tương ứng; A2-07A sau ACK vẫn PASS video 29,55s; không yêu cầu thử lại.
+- Đã bổ sung mô tả an toàn (không tọa độ/PII) ở docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md mục 2I, commit 430194fcf8ad69018847ab6b212c8a7ec7be1876; cập nhật docs/ISSUE_2_A2_07B_PRE_ACK_INSTRUMENTATION_DESIGN_2026-11-17.md trạng thái CI theo emulator, commit eba3ae8b606126ff6385a6a191c3fc8df61dfbbe; Issue #2 comment ID 6934620858.
+- NEXT: check HEAD/CI after this state commit; review narrow instrumentation test for (a) stale STOP arriving while new lease is pending, (b) Stop after start dispatch before ACK, without fake GPS/foregone phone UI. Keep full OEM/physical matrix pending, Issue #2 open. Issue #3 one production GNSS owner/one durable writer not certified; don't confuse headless debug proof with passenger fare.
+- Safety: only feature/navitaximeter-foundation writes; PR #1 Draft, Issue #2/#3 OPEN, main/TTX read-only, no paid APIs/Billing, no passenger fares, no schema v3/tariff/receipt changes, no app data wipe or reinstall. Future phone test must satisfy Appendix A / rule §9 step-by-step with exact APK/SHA and redacted evidence, not now.
+- This docs-only state update changes HEAD again. Do not transplant 97d96d CI SUCCESS to later SHA; compare new run when available. Rollback via reviewed git revert on feature branch only.
+
+---
 # CHU KỲ 9 — LƯỢT 2/7 · ANDROID STALE STOP / PRE-ACK REGRESSION IMPLEMENTED (17/11/2026 UTC+07)
 
 - AI_REPLY_COUNT=2/7 sau phản hồi này. Lượt 7/7 tiếp theo bắt buộc handoff 3.1–3.10 và Phụ lục A/C, không reset bộ đếm giữa chat.
