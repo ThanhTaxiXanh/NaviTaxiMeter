@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Require executed Android instrumentation results for DEBUG-only SQLite probe.
+"""Require executed (not just compiled) Android DEBUG instrumentation evidence.
 
-A successful :app:assembleDebugAndroidTest proves COMPILATION only; this
-parser accepts only a real connectedDebugAndroidTest JUnit XML testcase.
-It does not certify physical device GNSS/FGS or production trip durability.
+Four headless SQLite probes and two real-service token lifecycle regressions
+must each appear once as passing JUnit XML testcases. Emulator evidence is NOT
+physical GNSS, production SQLite, or passenger-fare certification.
 """
 import sys
 from pathlib import Path
@@ -18,13 +18,20 @@ EXPECTED_METHODS = (
     EXPECTED_METHOD, EXPECTED_DEBUG_METHOD, EXPECTED_LEASE_METHOD,
     EXPECTED_LATE_METHOD,
 )
+EXPECTED_TOKEN_CLASS = "vn.navitaximeter.LocationSafetyTokenInstrumentedTest"
+EXPECTED_STALE_TOKEN_METHOD = "savedRealNotificationStopFromOldLeaseCannotStopNewFgService"
+EXPECTED_PRE_ACK_METHOD = "preAckStopKeepsLeaseUntilTeardownAndRejectsStaleStart"
+EXPECTED_CASES = tuple((EXPECTED_CLASS, method) for method in EXPECTED_METHODS) + (
+    (EXPECTED_TOKEN_CLASS, EXPECTED_STALE_TOKEN_METHOD),
+    (EXPECTED_TOKEN_CLASS, EXPECTED_PRE_ACK_METHOD),
+)
 
 
 def verify(results_dir: Path) -> int:
     root = Path(results_dir)
     if not root.is_dir():
         raise ValueError("Android instrumented XML directory missing")
-    executed = {name: 0 for name in EXPECTED_METHODS}
+    executed = {key: 0 for key in EXPECTED_CASES}
     for report in root.rglob("*.xml"):
         try:
             tree = ET.parse(report)
@@ -33,20 +40,23 @@ def verify(results_dir: Path) -> int:
         for case in tree.iter("testcase"):
             cls = case.attrib.get("classname", "")
             method = case.attrib.get("name", "")
-            if not cls.endswith(EXPECTED_CLASS) or method not in EXPECTED_METHODS:
+            match = next(
+                (key for key in EXPECTED_CASES
+                 if cls.endswith(key[0]) and method == key[1]), None
+            )
+            if match is None:
                 continue
-            executed[method] += 1
+            executed[match] += 1
             if any(child.tag in ("failure", "error", "skipped") for child in case):
-                raise ValueError("Headless Android test failed/skipped: " + str(report))
+                raise ValueError("Android test failed/skipped: " + str(report))
     if any(count != 1 for count in executed.values()):
         raise ValueError(
-            "Require exactly one executed result for ALL FOUR Android debug "
-            + "probe methods, found " + str(executed)
+            "Require exactly one PASS for all SIX Android DEBUG methods, found "
+            + str(executed)
         )
-    print("PASS: FOUR Android emulator instrumented methods executed: "
-          "headless SQLite counter, Kotlin-Dart DEBUG checkpoint ACK, "
-          "contended writer Service lifecycle, and stale ACK after teardown/rebind")
-    print("WARNING: NO production SQLite writer, GNSS or passenger-fare proof")
+    print("PASS: SIX Android emulator instrumented methods executed: "
+          "four headless SQLite probes and two native safety-service token races")
+    print("WARNING: no physical GNSS, production trip writer or passenger-fare proof")
     return sum(executed.values())
 
 
