@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi handoff-memory"
+  short_description: "Bàn giao định kỳ đúng repo, SHA, CI, nhánh và công việc còn lại."

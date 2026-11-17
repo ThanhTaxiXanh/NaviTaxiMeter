@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi architecture-gate"
+  short_description: "Đánh giá kiến trúc Flutter, state machine và ranh giới GPS, cước, SQLite, UI."

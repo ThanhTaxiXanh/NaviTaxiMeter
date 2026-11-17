@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi waiting-fee"
+  short_description: "Kiểm chứng thời gian chờ, ngưỡng bắt đầu tính và GPS jitter."

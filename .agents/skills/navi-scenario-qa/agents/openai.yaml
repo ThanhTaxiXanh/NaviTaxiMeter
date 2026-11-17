@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi scenario-qa"
+  short_description: "Lập ma trận test taxi, GPS, SQLite, backup và 50/100 người dùng."

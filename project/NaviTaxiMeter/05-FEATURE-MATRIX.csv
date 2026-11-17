@@ -1,0 +1,14 @@
+Feature,Requirement,State_at_integration,Primary_evidence,Next_gate
+Fare calculation,Opening + tiered + wait/BOT + rounding,FOUNDATION_IMPLEMENTED,lib/src/core/taximeter_engine.dart,Independent parity and field calibration
+Confirmed tariff,Driver-controlled immutable per trip,FOUNDATION_PARTIAL,lib/src/domain/confirmed_tariffs.dart,Production trip validation
+SQLite v3,Active trip route and receipts,FOUNDATION_IMPLEMENTED,lib/src/data/trip_repository.dart,Production durable ACK single writer
+GPS preview,Real physical Geolocator preview,LAB_ONLY,lib/src/ui/gps_preview_page.dart,Physical Android OEM testing
+Native FGS,Trusted fix liveness diagnostics,LAB_ONLY,android_native/LocationSafetyService.kt,Production TripLocationService
+Headless SQLite,Emulator proof for isolated debug database,TEST_ONLY,android_native/HeadlessSqliteProbeService.kt,Production writer integration
+Google Maps 2D/3D,Driving camera and buildings,BLOCKED_COST_POLICY,project/NaviTaxiMeter/03-GOOGLE-MAPS-COST-AND-LICENSE.md,Explicit API/billing approval
+Seven customer screens,Home search route drive history receipt settings,PLANNED,project/NaviTaxiMeter/01-PRODUCT-REQUIREMENTS.md,Original mockups and implementation
+VietQR,Verified bank-app transfer QR,PLANNED,project/NaviTaxiMeter/01-PRODUCT-REQUIREMENTS.md,EMVCo and bank verification
+Backup/restore,Entire config plus trip and route,PLANNED,project/NaviTaxiMeter/09-SECURITY-AND-PRIVACY.md,Atomic restore/migration proof
+GPS field endurance,Real device during 24-hour drive,NOT_TESTED,project/NaviTaxiMeter/04-TEST-PLAN-50-100-USERS.md,OEM hardware evidence
+50/100 cost,Zero paid API for 30 days,NOT_VERIFIED,tool/check_zero_cost_policy.py,Static source + real external invoice if any
+Signed release,Stable signer and safe upgrade,NOT_VERIFIED,.github/workflows/flutter-foundation.yml,Release signer/artifact acceptance

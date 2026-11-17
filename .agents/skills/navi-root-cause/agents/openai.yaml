@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi root-cause"
+  short_description: "Chẩn đoán lỗi có bằng chứng và test tái hiện."

@@ -1,0 +1,406 @@
+// Issue #3 P2: tests only. Synthetic GPS, fake tariff and disposable SQLite v3.
+// Production coordinator is still NOT approved for passenger fares.
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'package:navitaximeter/src/core/metered_trip_coordinator.dart';
+import 'package:navitaximeter/src/core/taximeter_engine.dart';
+import 'package:navitaximeter/src/data/trip_repository.dart';
+import 'package:navitaximeter/src/data/trip_session_snapshot.dart';
+import 'package:navitaximeter/src/domain/confirmed_tariffs.dart';
+import 'package:navitaximeter/src/domain/trip_record.dart';
+import 'package:navitaximeter/src/domain/trip_route_point.dart';
+
+class _BlockingCheckpointRepository extends TripRepository {
+  _BlockingCheckpointRepository({required super.databasePath});
+
+  Future<void> Function()? beforeCheckpoint;
+  Future<void> Function()? beforeBegin;
+  Future<void> Function()? afterBegin;
+
+  @override
+  Future<void> beginActiveWithInitialFix({
+    required TripSessionSnapshot snapshot,
+    required TripRoutePoint initialPoint,
+  }) async {
+    if (beforeBegin != null) await beforeBegin!();
+    await super.beginActiveWithInitialFix(
+      snapshot: snapshot, initialPoint: initialPoint);
+    if (afterBegin != null) await afterBegin!();
+  }
+
+  @override
+  Future<void> saveActiveIncremental({
+    required TripSessionSnapshot snapshot,
+    required int routeStartIndex,
+    required List<TripRoutePoint> appendedPoints,
+  }) async {
+    if (beforeCheckpoint != null) await beforeCheckpoint!();
+    await super.saveActiveIncremental(
+      snapshot: snapshot, routeStartIndex: routeStartIndex,
+      appendedPoints: appendedPoints,
+    );
+  }
+}
+
+void main() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
+  final start = DateTime.utc(2026, 11, 15, 9);
+  late Directory sandbox;
+  late _BlockingCheckpointRepository repository;
+  late MeteredTripCoordinator coordinator;
+  late Database raw;
+
+  ConfirmedTariff testTariff() => ConfirmedTariff(
+    id: 'TEST_ONLY_CONFIRMED',
+    confirmedAtUtc: start,
+    tariff: const TariffConfig(
+      name: 'Synthetic fixture; NOT a passenger tariff',
+      baseFare: 12000, baseDistanceKm: 0.5,
+      perKmRate: 15000, longDistanceThresholdKm: 30,
+      longDistancePerKmRate: 12000, waitingFeePerHour: 36000,
+    ),
+  );
+
+  MeterGpsObservation fix(int secs, {double latitude = 21.0}) {
+    final at = start.add(Duration(seconds: secs));
+    return MeterGpsObservation(
+      fix: GpsFix(
+        latitude: latitude, longitude: 105.8, accuracyMeters: 5,
+        speedKmh: 25, timestamp: at,
+      ),
+      receivedAt: at, isMocked: false, foregroundStreamActive: true,
+    );
+  }
+
+  Future<String> persisted() async => (await repository.loadActive())!;
+  Future<void> begin() async {
+    await coordinator.begin(tariff: testTariff(), initial: fix(0));
+  }
+  Future<void> blockNextRoute(int sequence) async {
+    await raw.execute('''CREATE TRIGGER block_route_test_only
+      BEFORE INSERT ON active_trip_route WHEN NEW.sequence=$sequence
+      BEGIN SELECT RAISE(ABORT, 'TEST_ONLY route fail'); END''');
+  }
+
+  setUp(() async {
+    sandbox = await Directory.systemTemp.createTemp('navi-coordinator-cow-');
+    repository = _BlockingCheckpointRepository(
+      databasePath: path.join(sandbox.path, 'DISPOSABLE_V3_ONLY.db'),
+    );
+    coordinator = MeteredTripCoordinator(repository: repository);
+    expect(await repository.loadActive(), isNull); // Open a fresh v3 DB.
+    raw = await openDatabase(
+      path.join(sandbox.path, 'DISPOSABLE_V3_ONLY.db'),
+      singleInstance: false,
+    );
+  });
+
+  tearDown(() async {
+    await raw.close();
+    await repository.dispose();
+    if (await sandbox.exists()) await sandbox.delete(recursive: true);
+  });
+
+  test('begin() keeps session and route invisible until initial COMMIT',
+      () async {
+    final entered = Completer<void>(), release = Completer<void>();
+    repository.beforeBegin = () async {
+      entered.complete();
+      await release.future;
+    };
+    final pending = coordinator.begin(
+        tariff: testTariff(), initial: fix(0));
+    await entered.future;
+    expect(coordinator.hasSession, false);
+    expect(coordinator.fareForTesting, 0);
+    expect(coordinator.recordedRoute, isEmpty);
+    expect(await repository.loadActive(), isNull);
+    expect(await raw.query('active_trip_route'), isEmpty);
+    release.complete();
+    await pending;
+    expect(coordinator.hasSession, true);
+    expect(coordinator.storageFaulted, false);
+    expect(coordinator.recordedRoute.length, 1);
+    final active = TripSessionSnapshot.decode((await repository.loadActive())!);
+    expect(active.routePoints.length, 1);
+    expect(active.routePoints.single.segment, 0);
+    expect((await raw.query('active_trip_route')).single['sequence'], 0);
+  });
+
+  test('begin() route INSERT abort rolls back reserved header and first GPS',
+      () async {
+    await blockNextRoute(0);
+    await expectLater(begin(), throwsA(isA<DatabaseException>()));
+    expect(coordinator.hasSession, false);
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.fareForTesting, 0);
+    expect(coordinator.recordedRoute, isEmpty);
+    expect(await repository.loadActive(), isNull);
+    expect(await raw.query('active_trip'), isEmpty);
+    expect(await raw.query('active_trip_route'), isEmpty);
+    await expectLater(begin(), throwsStateError); // No automatic re-begin.
+    final restarted = MeteredTripCoordinator(repository: repository);
+    expect(await restarted.recover(at: start.add(const Duration(hours: 1))),
+        false);
+  });
+
+  test('begin() header INSERT abort leaves no route or phantom session',
+      () async {
+    await raw.execute('''CREATE TRIGGER fail_initial_header_test_only
+      BEFORE INSERT ON active_trip
+      BEGIN SELECT RAISE(ABORT, 'TEST_ONLY initial header fail'); END''');
+    await expectLater(begin(), throwsA(isA<DatabaseException>()));
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.hasSession, false);
+    expect(await repository.loadActive(), isNull);
+    expect(await raw.query('active_trip_route'), isEmpty);
+    expect(await raw.query('active_trip'), isEmpty);
+  });
+
+  test('begin() COMMIT followed by lost callback requires recovery PAUSED',
+      () async {
+    repository.afterBegin = () async =>
+        throw StateError('TEST_ONLY callback lost after COMMIT');
+    await expectLater(begin(), throwsStateError);
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.hasSession, false);
+    expect(coordinator.recordedRoute, isEmpty);
+    expect(coordinator.fareForTesting, 0);
+    final durable = TripSessionSnapshot.decode((await repository.loadActive())!);
+    expect(durable.routePoints.length, 1);
+    expect((await raw.query('active_trip_route')).single['sequence'], 0);
+    await expectLater(begin(), throwsStateError);
+    final restarted = MeteredTripCoordinator(repository: repository);
+    expect(await restarted.recover(at: start.add(const Duration(hours: 2))),
+        true);
+    expect(restarted.status, MeterStatus.paused);
+    expect(restarted.requiresManualResume, true);
+    expect(restarted.recordedRoute.length, 1);
+  });
+
+  test('two concurrent begin requests cannot replace the original session',
+      () async {
+    final secondRepo = TripRepository(
+      databasePath: path.join(sandbox.path, 'DISPOSABLE_V3_ONLY.db'));
+    try {
+      final second = MeteredTripCoordinator(repository: secondRepo);
+      Future<bool> attempt(MeteredTripCoordinator instance) async {
+        try {
+          await instance.begin(tariff: testTariff(), initial: fix(0));
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
+      final outcomes = await Future.wait(
+          [attempt(coordinator), attempt(second)]);
+      expect(outcomes.where((x) => x).length, 1);
+      final durable = TripSessionSnapshot.decode(
+          (await repository.loadActive())!);
+      expect(durable.routePoints.length, 1);
+      expect((await raw.query('active_trip')).length, 1);
+      expect((await raw.query('active_trip_route')).length, 1);
+      expect((await raw.query('active_trip_route')).single['sequence'], 0);
+    } finally {
+      await secondRepo.dispose();
+    }
+  });
+
+  test('begin() refuses orphaned route evidence instead of deleting it',
+      () async {
+    final orphan = {
+      'sequence': 0,
+      'latitude': 21.0,
+      'longitude': 105.8,
+      'recorded_at': start.toIso8601String(),
+      'accuracy_meters': 5.0,
+      'speed_kmh': 25.0,
+      'segment': 0,
+    };
+    await raw.insert('active_trip_route', orphan);
+    final before = await raw.query('active_trip_route');
+    await expectLater(begin(), throwsStateError);
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.hasSession, false);
+    expect(await raw.query('active_trip'), isEmpty);
+    expect(await raw.query('active_trip_route'), before);
+    expect(await repository.loadActive(), isNull);
+  });
+
+  test('initial route timestamp and segment cannot contradict snapshot',
+      () async {
+    final engine = TaximeterEngine(tariff: testTariff().tariff)
+      ..start(at: start);
+    expect(engine.acceptGps(fix(0).fix), true);
+    final snapshot = TripSessionSnapshot.fromEngine(engine);
+    for (final invalid in [
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8,
+        recordedAt: start.subtract(const Duration(seconds: 13)),
+        accuracyMeters: 5, speedKmh: 25,
+      ),
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8,
+        recordedAt: start.add(const Duration(seconds: 1)),
+        accuracyMeters: 5, speedKmh: 25,
+      ),
+      TripRoutePoint(
+        latitude: 21, longitude: 105.8, recordedAt: start,
+        accuracyMeters: 5, speedKmh: 25, segment: 1,
+      ),
+    ]) {
+      await expectLater(repository.beginActiveWithInitialFix(
+        snapshot: snapshot, initialPoint: invalid,
+      ), throwsFormatException);
+      expect(await raw.query('active_trip'), isEmpty);
+      expect(await raw.query('active_trip_route'), isEmpty);
+    }
+  });
+
+  test('accept() never publishes staged distance while SQLite is pending',
+      () async {
+    await begin();
+    final beforeHeader = await persisted();
+    final beforeDistance = coordinator.distanceKmForTesting;
+    final beforeTime = coordinator.elapsedSecondsForTesting;
+    final entered = Completer<void>(), unblock = Completer<void>();
+    repository.beforeCheckpoint = () async {
+      entered.complete();
+      await unblock.future;
+    };
+    final pending = coordinator.accept(fix(5, latitude: 21.0002));
+    await entered.future;
+    expect(coordinator.distanceKmForTesting, beforeDistance);
+    expect(coordinator.elapsedSecondsForTesting, beforeTime);
+    expect(coordinator.recordedRoute.length, 1);
+    expect(await persisted(), beforeHeader);
+    unblock.complete();
+    expect(await pending, true);
+    expect(coordinator.distanceKmForTesting, greaterThan(beforeDistance));
+    expect(coordinator.elapsedSecondsForTesting, 5);
+    expect(coordinator.recordedRoute.length, 2);
+    expect(TripSessionSnapshot.decode(await persisted()).meter['distanceMeters'],
+        greaterThan(15));
+  });
+
+  test('accept() route SQL failure preserves last durable money/route',
+      () async {
+    await begin();
+    expect(await coordinator.accept(fix(5, latitude: 21.0002)), true);
+    final before = await persisted();
+    final money = coordinator.fareForTesting;
+    final distance = coordinator.distanceKmForTesting;
+    final time = coordinator.elapsedSecondsForTesting;
+    await blockNextRoute(2);
+    await expectLater(coordinator.accept(fix(10, latitude: 21.0004)),
+        throwsA(isA<DatabaseException>()));
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.status, MeterStatus.paused);
+    expect(coordinator.fareForTesting, money);
+    expect(coordinator.distanceKmForTesting, distance);
+    expect(coordinator.elapsedSecondsForTesting, time);
+    expect(coordinator.recordedRoute.length, 2);
+    expect(await persisted(), before);
+    await expectLater(coordinator.accept(fix(15)), throwsStateError);
+
+    final restarted = MeteredTripCoordinator(repository: repository);
+    expect(await restarted.recover(at: start.add(const Duration(hours: 1))),
+        true);
+    expect(restarted.status, MeterStatus.paused);
+    expect(restarted.requiresManualResume, true);
+    expect(restarted.distanceKmForTesting, distance);
+  });
+
+  test('suspend() failed header INSERT cannot charge or alter durable state',
+      () async {
+    await begin();
+    final before = await persisted();
+    final money = coordinator.fareForTesting;
+    final time = coordinator.elapsedSecondsForTesting;
+    await raw.execute('''CREATE TRIGGER block_suspend_test_only
+      BEFORE INSERT ON active_trip
+      BEGIN SELECT RAISE(ABORT, 'TEST_ONLY suspend fail'); END''');
+    await expectLater(coordinator.watchdog(
+      at: start.add(const Duration(seconds: 40)),
+      foregroundStreamActive: false,
+    ), throwsA(isA<DatabaseException>()));
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.status, MeterStatus.paused);
+    expect(coordinator.fareForTesting, money);
+    expect(coordinator.elapsedSecondsForTesting, time);
+    expect(await persisted(), before);
+    expect(coordinator.recordedRoute.length, 1);
+  });
+
+  test('resume() rejected SQLite route leaves original PAUSED trip unchanged',
+      () async {
+    await begin();
+    expect(await coordinator.watchdog(
+      at: start.add(const Duration(seconds: 35)),
+      foregroundStreamActive: false,
+    ), true);
+    expect(coordinator.status, MeterStatus.paused);
+    final before = await persisted();
+    final money = coordinator.fareForTesting;
+    final route = coordinator.recordedRoute.toList();
+    await blockNextRoute(1);
+    await expectLater(coordinator.resume(fix(40, latitude: 21.05)),
+        throwsA(isA<DatabaseException>()));
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.status, MeterStatus.paused);
+    expect(coordinator.requiresManualResume, true);
+    expect(coordinator.fareForTesting, money);
+    expect(coordinator.recordedRoute, route);
+    expect(await persisted(), before);
+  });
+
+  test('finish() receipt INSERT failure cannot expose phantom FINISHED fare',
+      () async {
+    await begin();
+    expect(await coordinator.accept(fix(5, latitude: 21.0002)), true);
+    expect(await coordinator.watchdog(
+      at: start.add(const Duration(seconds: 40)),
+      foregroundStreamActive: false,
+    ), true);
+    final before = await persisted();
+    final money = coordinator.fareForTesting;
+    final distance = coordinator.distanceKmForTesting;
+    await raw.execute('''CREATE TRIGGER block_finish_test_only
+      BEFORE INSERT ON trips
+      BEGIN SELECT RAISE(ABORT, 'TEST_ONLY receipt fail'); END''');
+    await expectLater(coordinator.finish(
+      at: start.add(const Duration(seconds: 60)),
+      driverConfirmed: true,
+    ), throwsA(isA<DatabaseException>()));
+    expect(coordinator.storageFaulted, true);
+    expect(coordinator.status, MeterStatus.paused);
+    expect(coordinator.fareForTesting, money);
+    expect(coordinator.distanceKmForTesting, distance);
+    expect(await persisted(), before);
+    expect(await repository.listTrips(), isEmpty);
+    expect(coordinator.recordedRoute.length, 2);
+  });
+
+  test('finished receipt publishes only after completeActive() returns',
+      () async {
+    await begin();
+    final completed = await coordinator.finish(
+      at: start.add(const Duration(seconds: 30)), driverConfirmed: true,
+    );
+    expect(coordinator.hasSession, false);
+    expect(await repository.loadActive(), isNull);
+    final records = await repository.listTrips();
+    expect(records.length, 1);
+    expect(records.single.id, completed.id);
+  });
+}

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi performance-profile"
+  short_description: "Đo và tối ưu khởi động, FPS, pin, RAM, APK của Flutter Android."

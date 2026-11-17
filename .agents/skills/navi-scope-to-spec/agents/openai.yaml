@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi scope-to-spec"
+  short_description: "Đặc tả yêu cầu và chia ticket theo lát cắt end-to-end."

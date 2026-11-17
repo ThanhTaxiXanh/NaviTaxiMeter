@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi location-background"
+  short_description: "Thiết kế GPS foreground/background an toàn trên Android."

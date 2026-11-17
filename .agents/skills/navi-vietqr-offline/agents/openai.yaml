@@ -1,0 +1,3 @@
+interface:
+  display_name: "Navi vietqr-offline"
+  short_description: "Tạo mã VietQR chuyển khoản hợp lệ và kiểm tra bằng app ngân hàng."
