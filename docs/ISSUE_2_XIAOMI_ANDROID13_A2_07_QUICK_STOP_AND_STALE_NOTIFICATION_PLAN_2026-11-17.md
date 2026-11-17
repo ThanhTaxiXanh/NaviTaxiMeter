@@ -1,6 +1,6 @@
 # Issue #2 — Xiaomi Android 13: A2-07 Quick Stop, giới hạn stale-notification
 
-**Ngày:** 17/11/2026 (UTC+07). **Trạng thái:** PREPARED / **NOT TESTED**. Hướng dẫn từng nút dành cho chủ dự án. Tài liệu được tạo sau khi người dùng nhắc AI phải cung cấp quy trình kiểm thử điện thoại trước khi yêu cầu test, tuân thủ quy tắc 9 `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`.
+**Ngày:** 17/11/2026 (UTC+07). **Trạng thái sau video:** **A2-07A PASS theo video UI** (clip 29,55s, Stop SAU ACK, Preview lấy GPS thành công sau khi native nhả lease); **pre-ACK Stop và A2-07B stale notification token vẫn NOT TESTED/không thể thực hiện bằng UI hiện tại**. Tham chiếu mục **2H** trong hồ sơ bằng chứng Android thật; không cần bắt chủ dự án thử lặp A2-07A. Hướng dẫn từng nút dành cho chủ dự án. Tài liệu được tạo sau khi người dùng nhắc AI phải cung cấp quy trình kiểm thử điện thoại trước khi yêu cầu test, tuân thủ quy tắc 9 `docs/QUY_TAC_CUNG_BAN_GIAO_7_LUOT.md`.
 
 ## Bằng chứng kỹ thuật và giới hạn cần nói rõ
 
