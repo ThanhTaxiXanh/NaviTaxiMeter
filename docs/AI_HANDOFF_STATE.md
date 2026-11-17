@@ -1,3 +1,15 @@
+# CHU KỲ 9 — LƯỢT 2/7 · ANDROID STALE STOP / PRE-ACK REGRESSION IMPLEMENTED (17/11/2026 UTC+07)
+
+- AI_REPLY_COUNT=2/7 sau phản hồi này. Lượt 7/7 tiếp theo bắt buộc handoff 3.1–3.10 và Phụ lục A/C, không reset bộ đếm giữa chat.
+- HEAD trước code c90fb49346bf818cab2383d6a4cb79f8668b749a: Foundation [43986742295](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43986742295) SUCCESS, Zero Cost [43986741976](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43986741976) SUCCESS đúng SHA. PR #1 OPEN/DRAFT, Issues #2/#3 OPEN.
+- MỚI ĐÃ VIẾT (KHÔNG phải PASS Android): android_native/LocationSafetyTokenInstrumentedTest.kt thêm 2 ca Android instrumentation: lưu PendingIntent từ notification thật của lease cũ, send sau FGS mới ACK; pre-ACK requestSafetyStop và queued START teardown, stale START từ lease cũ. tool/bootstrap_android.py đăng ký AndroidTest; tool/verify_android_probe_results.py bắt buộc đúng 6 JUnit XML PASS; tool/test_verify_android_probe_results.py bổ sung các ca negative verifier. Commits 7d58de28691dd1844de606136b0ceeb1e159ce1f, bee889b4bf17aac1eee9886c6b2b3df0d499c703, 5d54ebd73e97b4c3b7006ecb8f985d9ecc87722a, e76d3c80a14168263ec05155a40f78544cfbb4d1.
+- CI tại lúc ghi: exact-SHA e76d3c80 Zero Cost [43989168832](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43989168832) SUCCESS, Foundation [43989168864](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43989168864) PENDING. Không tuyên bố Android emulator hoặc physical PASS. Commit trung gian 5d54ebd Zero Cost FAILURE do unit verifier chưa đồng bộ, đã bổ sung và source-gate e76d SUCCESS. Foundation interim CANCELLED do concurrency.
+- Issue #2 comment 6933965762 đã ghi trạng thái đúng. A2-07A vẫn PASS theo video 29,55s, không thử lại; A2-07B/pre-ACK Android runtime NOT VERIFIED và physical Xiaomi NOT TESTED. UI hiện tại không thể replay token cũ hoặc nhấn Stop trước ACK. Không giao ca điện thoại không khả thi.
+- NEXT: đọc Foundation CI run 43989168864 và JUnit XML thực thi 6 methods; nếu FAIL inspect earliest primary failure rồi sửa tối thiểu; sau khi emulator PASS mới cân nhắc phone test với hướng dẫn nguyên văn Quy tắc 9/Phụ lục A và ảnh/video che riêng tư. Không đồng nhất emulator với máy thật.
+- Giữ nguyên: chỉ branch feature/navitaximeter-foundation, PR #1 Draft, Issue #2/#3 OPEN; main/TTX read-only; no paid API/Billing, no passenger fare, SQLite v3 / confirmed tariffs / receipts/routes unchanged, no reset/reinstall/migration, no signing/release. Issue #3 production GNSS owner and durable app SQLite writer NOT IMPLEMENTED.
+- Commit state này sẽ đổi HEAD, không lấy CI của e76d làm PASS cho HEAD mới. Rollback chỉ git revert có review, không force push.
+
+---
 # CHU KỲ 9 — LƯỢT 1/7 · TIẾP QUẢN & LẬP DEBUG TEST PLAN (17/11/2026, UTC+07)
 
 - **Chat mới: AI_REPLY_COUNT = 1/7 sau phản hồi này.** Bàn giao bắt buộc tiếp theo tại lượt 7/7, kèm 3.1–3.10, Phụ lục A/C nguyên văn; không tự đặt lại bộ đếm trong cùng chat.
