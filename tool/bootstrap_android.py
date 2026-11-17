@@ -33,7 +33,10 @@ JVM_TEST_SOURCES = (
     "DebugWriterOwnershipRegistryTest.kt",
 )
 DEBUG_SOURCES = ("HeadlessSqliteProbeService.kt", "HeadlessProbeCallbackFence.kt")
-ANDROID_TEST_SOURCES = ("HeadlessSqliteProbeInstrumentedTest.kt",)
+ANDROID_TEST_SOURCES = (
+    "HeadlessSqliteProbeInstrumentedTest.kt",
+    "LocationSafetyTokenInstrumentedTest.kt",
+)
 DEBUG_SERVICE_TAG = (
     '        <service android:name=".HeadlessSqliteProbeService"\n'
     '            android:exported="false" />\n'
