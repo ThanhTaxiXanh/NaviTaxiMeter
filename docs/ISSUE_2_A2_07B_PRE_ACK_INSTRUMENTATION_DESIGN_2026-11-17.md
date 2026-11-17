@@ -2,6 +2,17 @@
 
 **Status:** DESIGN REVIEWED AGAINST SOURCE; **NOT IMPLEMENTED / NOT TESTED ON DEVICE**. This is an addition to the existing A2-07A runbook, not a replacement of its video PASS result.
 
+## Cycle 9 implementation and verified CI follow-up (17 Nov 2026)
+
+**CURRENT STATE: IMPLEMENTED and CI TESTED on Android 14 emulator, NOT TESTED on Xiaomi physical Android.** The older design baseline and NOT IMPLEMENTED statements below describe the original planning snapshot and are **superseded for emulator implementation only**.
+
+- Instrumentation source: `android_native/LocationSafetyTokenInstrumentedTest.kt`; bootstrap installed by `tool/bootstrap_android.py`. JUnit execution gate: `tool/verify_android_probe_results.py` (requires all 6 methods PASS in actual Android instrumentation XML) with regression tests in `tool/test_verify_android_probe_results.py`. No UI/test-token hooks added to a production APK.
+- Verified code+handoff HEAD **`97d96d6101e6631524235ea629a2b414274b6259`**: [Foundation run 43989450112](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43989450112) **SUCCESS**, jobs `build-test` **SUCCESS** and `Android 14 emulator headless SQLite execution` **SUCCESS**. Emulator log: `Tests 6/6 completed. (0 skipped) (0 failed)`; XML gate reports six Android instrumented tests executed, including two token races. [Zero Cost Source Gate 43989450094](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43989450094) **SUCCESS**, but not a 30-day cloud billing audit.
+- **A2-07B emulator PASS, scoped:** replay saved old notification `PendingIntent` after new FGS has received matching ACK; new owner, no stopRequested, no overlapping claim, matching new ACK survive. **Xiaomi/other physical devices NOT TESTED**.
+- **Pre-ACK emulator PASS, scoped:** request Stop after lease reservation and before native `onStartCommand`, queued START safely tears down without ACK/fresh, and a stale START does not kill a later active lease. This deterministic case **does not exhaustively test a Stop racing an already-dispatched asynchronous START before first ACK**. Physical device NOT TESTED.
+- Remaining test work (without repeating A2-07A PASS video): stale STOP delivered while the new lease is still pending; Stop after dispatch but before ACK under controlled timing; OS-level owner overlap and Android 11–16/OEM matrix. Do not ask user to hit disabled Flutter Stop or recover an obsolete notification manually. Issue #2 stays OPEN; Issue #3 one production GNSS owner + durable SQLite writer not certified.
+- Details also in `docs/ISSUE_2_XIAOMI_ANDROID13_PHYSICAL_EVIDENCE_2026-11-16.md` §2I. Protect coordinates, customer data and existing tariffs; no paid API or passenger fare.
+
 ## Verified baseline
 - Baseline HEAD before this document: `4fe6e28965b8efa9d66a8da5cf2fb9132f920eb5` (17 Nov 2026). PR #1 OPEN/DRAFT, Issues #2/#3 OPEN.
 - Exact-SHA Zero Cost Source Gate run [43986056522](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43986056522): SUCCESS (source scan only). Foundation [43986056478](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43986056478): IN_PROGRESS at review; older [43986049284](https://github.com/ThanhTaxiXanh/NaviTaxiMeter/actions/runs/43986049284) CANCELLED. Do not attribute SUCCESS until a completed exact-SHA run is observed.
